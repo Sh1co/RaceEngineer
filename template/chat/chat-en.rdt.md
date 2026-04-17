@@ -22,6 +22,11 @@ This template lets you chat with RaceEngineer in English.
   },
   "variables": [
     {
+      "name": "openFiles",
+      "time": "conversation-start",
+      "type": "context"
+    },
+    {
       "name": "selectedText",
       "time": "conversation-start",
       "type": "selected-text"
@@ -35,6 +40,15 @@ This template lets you chat with RaceEngineer in English.
     }
   ],
   "response": {
+    "retrievalAugmentation": {
+      "type": "similarity-search",
+      "variableName": "searchResults",
+      "query": "{{lastMessage}}",
+      "source": "embedding-file",
+      "file": "raceengineer-repository.json",
+      "threshold": 0.7,
+      "maxResults": 5
+    },
     "maxTokens": 1024,
     "stop": ["Bot:", "Developer:"]
   }
@@ -51,11 +65,31 @@ Pay special attention to the current developer request.
 ## Current Request
 Developer: {{lastMessage}}
 
+{{#if openFiles}}
+## Open Files Context
+{{#each openFiles}}
+### {{name}} ({{language}})
+\`\`\`
+{{content}}
+\`\`\`
+{{/each}}
+{{/if}}
+
 {{#if selectedText}}
 ## Selected Code
 \`\`\`
 {{selectedText}}
 \`\`\`
+{{/if}}
+
+{{#if searchResults}}
+## Repository Search Results
+{{#each searchResults}}
+### {{file}}:{{startPosition}}-{{endPosition}}
+\`\`\`
+{{content}}
+\`\`\`
+{{/each}}
 {{/if}}
 
 ## Conversation
