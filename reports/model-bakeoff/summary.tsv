@@ -1,0 +1,5 @@
+model	status	seconds	log
+qwen2.5-coder:1.5b	0	43.17	reports/model-bakeoff/qwen2-5-coder-1-5b.log
+qwen2.5-coder:1.5b-base	1	8.53	reports/model-bakeoff/qwen2-5-coder-1-5b-base.log
+qwen2.5-coder:3b	0	62.9	reports/model-bakeoff/qwen2-5-coder-3b.log
+qwen2.5-coder:3b-base	0	43.4	reports/model-bakeoff/qwen2-5-coder-3b-base.log
