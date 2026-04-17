@@ -7,6 +7,14 @@ import { RetrievalAugmentation } from "../template/RubberduckTemplate";
 import { cosineSimilarity } from "./cosineSimilarity";
 import { EmbeddingFile, embeddingFileSchema } from "./EmbeddingFile";
 
+type RankedChunk = {
+  file: string;
+  startPosition: number;
+  endPosition: number;
+  content: string;
+  similarity: number;
+};
+
 export async function executeRetrievalAugmentation({
   retrievalAugmentation,
   initVariables,
@@ -72,26 +80,122 @@ export async function executeRetrievalAugmentation({
 
   const queryEmbedding = result.embedding!;
 
-  const similarityChunks = chunks
-    .map(({ start_position, end_position, content, file, embedding }) => ({
+  const rankedChunks: RankedChunk[] = chunks.map(
+    ({ start_position, end_position, content, file, embedding }) => ({
       file,
       startPosition: start_position,
       endPosition: end_position,
       content,
       similarity: cosineSimilarity(embedding, queryEmbedding),
-    }))
-    .filter(({ similarity }) => similarity >= retrievalAugmentation.threshold);
+    })
+  );
 
-  similarityChunks.sort((a, b) => b.similarity - a.similarity);
+  const selectedChunks = selectChunksForQuery({
+    query,
+    rankedChunks,
+    threshold: retrievalAugmentation.threshold,
+    maxResults: retrievalAugmentation.maxResults,
+  });
 
-  return similarityChunks
-    .slice(0, retrievalAugmentation.maxResults)
-    .map((chunk) => ({
+  return selectedChunks.map((chunk) => ({
       file: chunk.file,
       startPosition: chunk.startPosition,
       endPosition: chunk.endPosition,
       content: chunk.content,
     }));
+}
+
+function selectChunksForQuery({
+  query,
+  rankedChunks,
+  threshold,
+  maxResults,
+}: {
+  query: string;
+  rankedChunks: RankedChunk[];
+  threshold: number;
+  maxResults: number;
+}): RankedChunk[] {
+  if (rankedChunks.length === 0) {
+    return [];
+  }
+
+  const maxCount = Math.max(1, maxResults);
+  const bySimilarity = [...rankedChunks].sort(
+    (a, b) => b.similarity - a.similarity
+  );
+
+  const aboveThreshold = bySimilarity.filter(
+    ({ similarity }) => similarity >= threshold
+  );
+  if (aboveThreshold.length > 0) {
+    return aboveThreshold.slice(0, maxCount);
+  }
+
+  const lexicalMatches = [...rankedChunks]
+    .map((chunk) => ({
+      chunk,
+      lexicalScore: calculateLexicalScore({
+        query,
+        file: chunk.file,
+        content: chunk.content,
+      }),
+    }))
+    .filter(({ lexicalScore }) => lexicalScore > 0)
+    .sort((a, b) => {
+      if (b.lexicalScore !== a.lexicalScore) {
+        return b.lexicalScore - a.lexicalScore;
+      }
+      return b.chunk.similarity - a.chunk.similarity;
+    });
+
+  if (lexicalMatches.length > 0) {
+    return lexicalMatches.slice(0, maxCount).map(({ chunk }) => chunk);
+  }
+
+  // Strong fallback: return top semantic chunks even under strict threshold.
+  return bySimilarity.slice(0, Math.min(maxCount, 3));
+}
+
+function calculateLexicalScore({
+  query,
+  file,
+  content,
+}: {
+  query: string;
+  file: string;
+  content: string;
+}): number {
+  const terms = tokenizeQuery(query);
+  if (terms.length === 0) {
+    return 0;
+  }
+
+  const contentLower = content.toLowerCase();
+  const fileLower = file.toLowerCase();
+
+  let score = 0;
+
+  for (const term of terms) {
+    if (contentLower.includes(term)) {
+      score += term.length >= 6 ? 3 : 2;
+    }
+
+    if (fileLower.includes(term)) {
+      score += 2;
+    }
+  }
+
+  return score;
+}
+
+function tokenizeQuery(query: string): string[] {
+  const tokens = query
+    .toLowerCase()
+    .split(/[^a-z0-9_]+/)
+    .filter((token) => token.length >= 2);
+
+  return Array.from(new Set(tokens));
 }
 
 function isEmbeddingFileMissingError(error: unknown): boolean {

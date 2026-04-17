@@ -6,6 +6,47 @@ import { AIClient } from "../ai/AIClient";
 import { ChunkWithContent } from "../conversation/retrieval-augmentation/EmbeddingFile";
 import { createSplitLinearLines } from "./chunk/splitLinearLines";
 
+const MAX_FILE_BYTES = 200_000;
+const SUPPORTED_EXTENSIONS = new Set([
+  ".js",
+  ".ts",
+  ".tsx",
+  ".sh",
+  ".yaml",
+  ".yml",
+  ".md",
+  ".css",
+  ".json",
+  ".toml",
+  ".config",
+]);
+
+const IGNORED_PATH_SEGMENTS = new Set([
+  ".git",
+  ".hg",
+  ".svn",
+  ".raceengineer",
+  "node_modules",
+  "vendor",
+  ".venv",
+  "venv",
+  "env",
+  "__pycache__",
+  ".pytest_cache",
+  ".mypy_cache",
+  ".ruff_cache",
+  ".tox",
+  "dist",
+  "build",
+  "out",
+  "coverage",
+  ".next",
+  ".nuxt",
+  ".svelte-kit",
+  ".turbo",
+  ".cache",
+]);
+
 export async function indexRepository({
   ai,
   outputChannel,
@@ -30,7 +71,11 @@ export async function indexRepository({
     trimmed: false,
   });
 
-  const files = (await git.raw(["ls-files"])).split("\n");
+  const files = await getRepositoryFiles({
+    repositoryPath,
+    git,
+    outputChannel,
+  });
   const chunksWithEmbedding: Array<ChunkWithContent> = [];
 
   let tokenCount = 0;
@@ -43,10 +88,12 @@ export async function indexRepository({
       cancellable: true,
     },
     async (progress, cancellationToken) => {
+      const progressUnit = files.length === 0 ? 100 : 100 / files.length;
+
       for (const file of files) {
         progress.report({
           message: `Indexing ${file}`,
-          increment: 100 / files.length,
+          increment: progressUnit,
         });
 
         if (cancellationToken.isCancellationRequested) {
@@ -54,12 +101,36 @@ export async function indexRepository({
           break;
         }
 
-        if (!isSupportedFile(file)) {
+        const absoluteFilePath = path.join(repositoryPath, file);
+
+        let stat;
+        try {
+          stat = await fs.stat(absoluteFilePath);
+        } catch (error) {
+          outputChannel.appendLine(`Skipping unreadable file '${file}'`);
+          console.error(error);
           continue;
         }
 
-        // TODO potential bug on windows
-        const content = await fs.readFile(`${repositoryPath}/${file}`, "utf8");
+        if (!stat.isFile()) {
+          continue;
+        }
+
+        if (stat.size > MAX_FILE_BYTES) {
+          outputChannel.appendLine(
+            `Skipping large file '${file}' (${stat.size} bytes)`
+          );
+          continue;
+        }
+
+        let content = "";
+        try {
+          content = await fs.readFile(absoluteFilePath, "utf8");
+        } catch (error) {
+          outputChannel.appendLine(`Skipping non-text file '${file}'`);
+          console.error(error);
+          continue;
+        }
 
         const chunks = createSplitLinearLines({
           maxChunkCharacters: 500, // ~4 char per token
@@ -150,23 +221,129 @@ export async function indexRepository({
   outputChannel.appendLine(`Cost: ${(tokenCount / 1000) * 0.0004} USD`);
 }
 
-function isSupportedFile(file: string) {
-  return (
-    (file.endsWith(".js") ||
-      file.endsWith(".ts") ||
-      file.endsWith(".tsx") ||
-      file.endsWith(".sh") ||
-      file.endsWith(".yaml") ||
-      file.endsWith(".yml") ||
-      file.endsWith(".md") ||
-      file.endsWith(".css") ||
-      file.endsWith(".json") ||
-      file.endsWith(".toml") ||
-      file.endsWith(".config")) &&
-    !(
-      file.endsWith(".min.js") ||
-      file.endsWith(".min.css") ||
-      file.endsWith("pnpm-lock.yaml")
-    )
-  );
+async function getRepositoryFiles({
+  repositoryPath,
+  git,
+  outputChannel,
+}: {
+  repositoryPath: string;
+  git: ReturnType<typeof simpleGit>;
+  outputChannel: vscode.OutputChannel;
+}) {
+  try {
+    const rawFiles = await git.raw([
+      "ls-files",
+      "--cached",
+      "--others",
+      "--exclude-standard",
+    ]);
+
+    return sanitizeRepositoryFiles(rawFiles.split("\n"));
+  } catch (error) {
+    outputChannel.appendLine(
+      "Git file listing failed. Falling back to filesystem scan."
+    );
+    console.error(error);
+
+    const allFiles = await listFilesFromFilesystem(repositoryPath);
+    return sanitizeRepositoryFiles(allFiles);
+  }
+}
+
+async function listFilesFromFilesystem(rootDirectory: string) {
+  const queue = [rootDirectory];
+  const files: string[] = [];
+
+  while (queue.length > 0) {
+    const currentDirectory = queue.shift()!;
+    const entries = await fs.readdir(currentDirectory, {
+      withFileTypes: true,
+    });
+
+    for (const entry of entries) {
+      const absolutePath = path.join(currentDirectory, entry.name);
+      const relativePath = normalizeRelativePath(
+        path.relative(rootDirectory, absolutePath)
+      );
+
+      if (entry.isDirectory()) {
+        if (isIgnoredPath(relativePath)) {
+          continue;
+        }
+
+        queue.push(absolutePath);
+        continue;
+      }
+
+      if (!entry.isFile()) {
+        continue;
+      }
+
+      files.push(relativePath);
+    }
+  }
+
+  return files;
+}
+
+function sanitizeRepositoryFiles(files: string[]) {
+  const uniqueFiles = new Set<string>();
+
+  for (const file of files) {
+    const normalized = normalizeRelativePath(file);
+    if (normalized.length === 0) {
+      continue;
+    }
+
+    if (!isSupportedFile(normalized)) {
+      continue;
+    }
+
+    uniqueFiles.add(normalized);
+  }
+
+  return Array.from(uniqueFiles).sort();
+}
+
+function normalizeRelativePath(file: string) {
+  return file
+    .trim()
+    .replace(/\\/g, "/")
+    .replace(/^\.\/+/, "");
+}
+
+export function isSupportedFile(file: string) {
+  if (isIgnoredPath(file)) {
+    return false;
+  }
+
+  const extension = path.extname(file).toLowerCase();
+  if (!SUPPORTED_EXTENSIONS.has(extension)) {
+    return false;
+  }
+
+  const lowerFile = file.toLowerCase();
+  if (
+    lowerFile.endsWith(".min.js") ||
+    lowerFile.endsWith(".min.css") ||
+    lowerFile.endsWith("pnpm-lock.yaml")
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+export function isIgnoredPath(file: string) {
+  const normalized = normalizeRelativePath(file).toLowerCase();
+  if (normalized.length === 0) {
+    return true;
+  }
+
+  const segments: string[] = normalized.split("/");
+  if (segments.some((segment) => IGNORED_PATH_SEGMENTS.has(segment))) {
+    return true;
+  }
+
+  return false;
 }
