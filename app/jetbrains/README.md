@@ -15,11 +15,14 @@ This module contains the first Rider/JetBrains implementation of RaceEngineer.
   - Reload Templates
   - Show Logs
 - Ollama chat requests (`/api/chat`) with `raceengineer.*` settings parity.
+- Chat timeout control (`requestTimeoutSeconds`) with one automatic retry on transient timeout.
+- Workspace file mention resolver for prompts like `FooService.cs` or `src/foo/FooService.cs`.
 - Autocomplete provider with:
   - qwen true infill (`prompt` + `suffix`) on Ollama.
   - deepseek/stable/default prompt strategies.
   - context normalization and response sanitization guards.
-- Kotlin regression tests for strategy/sanitize/normalize and infill payload fallback logic.
+  - Rider typing heuristics (`letter/digit`, `.`, `_`, `:`, `>`, newline) + prefix-filter bypass for popup visibility.
+- Kotlin regression tests for strategy/sanitize/normalize, completion engine flow, timeout/retry behavior, and workspace file context resolution.
 
 ## Build and test
 

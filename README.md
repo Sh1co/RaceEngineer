@@ -87,7 +87,9 @@ Current JetBrains v1 includes:
 - Chat tool window
 - Action parity (`Start Chat`, `Explain Code`, `Find Bugs`, `Generate Code`, `Generate Unit Test`, `Diagnose Errors`, `Reload Templates`, `Show Logs`)
 - Ollama chat + autocomplete strategy support (qwen infill + deepseek/stable/default prompt modes)
-- Regression tests for sanitize/normalize/strategy and infill payload fallback behavior
+- Chat timeout control (`requestTimeoutSeconds`) + transient-timeout retry
+- Workspace file mention context (`File.cs`, `src/path/File.cs`) for chat prompts
+- Rider-oriented regression tests for sanitize/normalize/strategy, completion engine flow, timeout/retry behavior, and workspace mention resolution
 
 Deferred parity items are tracked in:
 - [`doc/jetbrains-not-transferred-yet.md`](./doc/jetbrains-not-transferred-yet.md)
