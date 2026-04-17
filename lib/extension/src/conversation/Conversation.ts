@@ -30,6 +30,8 @@ export class Conversation {
   protected readonly initVariables: Record<string, unknown>;
 
   private readonly template: RubberduckTemplate;
+  private titleSummary: string | undefined;
+  private isGeneratingTitleSummary = false;
 
   private temporaryEditorContent: string | undefined;
   private temporaryEditorDocument: vscode.TextDocument | undefined;
@@ -37,6 +39,13 @@ export class Conversation {
 
   private diffContent: string | undefined;
   private diffEditor: DiffEditor | undefined;
+  private latestDiffApplyContext:
+    | {
+        document: vscode.TextDocument;
+        range: vscode.Range;
+        content: string;
+      }
+    | undefined;
   private readonly diffData: DiffData | undefined;
   private readonly diffEditorManager: DiffEditorManager;
   private readonly logger: Logger;
@@ -85,6 +94,13 @@ export class Conversation {
 
     try {
       const firstMessageContent = this.messages[0]?.content;
+
+      if (
+        header.useFirstMessageAsTitle === true &&
+        this.titleSummary != null
+      ) {
+        return this.titleSummary;
+      }
 
       if (
         header.useFirstMessageAsTitle === true &&
@@ -205,11 +221,105 @@ export class Conversation {
 
       // handle full completion (to allow for cleanup):
       await this.handleCompletion(responseUntilNow, prompt);
+      await this.maybeGenerateTitleSummary();
       this.logger.log("Chat Response: " + responseUntilNow + "\n");
     } catch (error: any) {
       console.log(error);
       await this.setError(error?.message ?? "Unknown error");
     }
+  }
+
+  private async maybeGenerateTitleSummary() {
+    if (this.template.header.useFirstMessageAsTitle !== true) {
+      return;
+    }
+
+    if (this.titleSummary != null || this.isGeneratingTitleSummary) {
+      return;
+    }
+
+    const firstUserMessage = this.messages.find(
+      (message) => message.author === "user"
+    )?.content;
+    const firstBotMessage = this.messages.find(
+      (message) => message.author === "bot"
+    )?.content;
+
+    if (firstUserMessage == null || firstBotMessage == null) {
+      return;
+    }
+
+    this.isGeneratingTitleSummary = true;
+    try {
+      const stream = await this.ai.streamText({
+        prompt: this.createTitleSummaryPrompt({
+          firstUserMessage,
+          firstBotMessage,
+        }),
+        maxTokens: 32,
+        temperature: 0,
+        stop: ["\n"],
+      });
+
+      let summary = "";
+      for await (const chunk of stream) {
+        summary += chunk;
+      }
+
+      const sanitizedSummary = this.sanitizeTitleSummary(summary);
+      if (sanitizedSummary.length === 0) {
+        return;
+      }
+
+      this.titleSummary = sanitizedSummary;
+      await this.updateChatPanel();
+    } catch (error) {
+      this.logger.debug(
+        `Failed to generate title summary: ${(error as Error)?.message ?? error}`
+      );
+    } finally {
+      this.isGeneratingTitleSummary = false;
+    }
+  }
+
+  private createTitleSummaryPrompt({
+    firstUserMessage,
+    firstBotMessage,
+  }: {
+    firstUserMessage: string;
+    firstBotMessage: string;
+  }) {
+    const userText = firstUserMessage.trim().slice(0, 600);
+    const botText = firstBotMessage.trim().slice(0, 600);
+
+    return [
+      "Create a very short chat title for a tab.",
+      "Rules:",
+      "- Use at most 6 words.",
+      "- Use plain text only.",
+      "- No quotes, markdown, prefix, or explanation.",
+      "",
+      "User request:",
+      userText,
+      "",
+      "Assistant response:",
+      botText,
+      "",
+      "Title:",
+    ].join("\n");
+  }
+
+  private sanitizeTitleSummary(summary: string): string {
+    const oneLine = summary.replace(/\r?\n/g, " ").trim();
+    if (oneLine.length === 0) {
+      return "";
+    }
+
+    const withoutPrefix = oneLine.replace(/^title\s*:\s*/i, "");
+    const withoutQuotes = withoutPrefix.replace(/^["'`]+|["'`]+$/g, "");
+    const collapsedWhitespace = withoutQuotes.replace(/\s+/g, " ").trim();
+
+    return collapsedWhitespace.slice(0, 80);
   }
 
   private async handlePartialCompletion(
@@ -397,6 +507,11 @@ export class Conversation {
 
     // diff the original file content with the edited file content:
     const editedFileContent = `${prefix}${editContentWithAdjustedWhitespace}${suffix}`;
+    this.latestDiffApplyContext = {
+      document,
+      range: diffData.range,
+      content: editContentWithAdjustedWhitespace,
+    };
 
     if (this.diffEditor == undefined) {
       this.diffEditor = this.diffEditorManager.createDiffEditor({
@@ -404,46 +519,52 @@ export class Conversation {
         editorColumn: diffData.editor.viewColumn ?? vscode.ViewColumn.One,
         conversationId: this.id,
       });
-    }
 
-    this.diffEditor.onDidReceiveMessage(async (rawMessage) => {
-      const message = webviewApi.outgoingMessageSchema.parse(rawMessage);
+      this.diffEditor.onDidReceiveMessage(async (rawMessage) => {
+        const message = webviewApi.outgoingMessageSchema.parse(rawMessage);
 
-      if (message.type === "reportError") {
-        this.setError(message.error);
-        return;
-      }
+        if (message.type === "reportError") {
+          this.setError(message.error);
+          return;
+        }
 
-      if (message.type !== "applyDiff") {
-        return;
-      }
+        if (message.type !== "applyDiff") {
+          return;
+        }
 
-      const edit = new vscode.WorkspaceEdit();
-      edit.replace(
-        document.uri,
-        diffData.range,
-        editContentWithAdjustedWhitespace
-      );
-      await vscode.workspace.applyEdit(edit);
+        const latestDiffApplyContext = this.latestDiffApplyContext;
+        if (latestDiffApplyContext == null) {
+          return;
+        }
 
-      const tabGroups = vscode.window.tabGroups;
-      const allTabs: vscode.Tab[] = tabGroups.all
-        .map((tabGroup) => tabGroup.tabs)
-        .flat();
-
-      const tab = allTabs.find((tab) => {
-        return (
-          (tab.input as any).viewType ===
-          `mainThreadWebview-raceengineer.diff.${this.id}`
+        const edit = new vscode.WorkspaceEdit();
+        edit.replace(
+          latestDiffApplyContext.document.uri,
+          latestDiffApplyContext.range,
+          latestDiffApplyContext.content
         );
+        await vscode.workspace.applyEdit(edit);
+
+        const tabGroups = vscode.window.tabGroups;
+        const allTabs: vscode.Tab[] = tabGroups.all
+          .map((tabGroup) => tabGroup.tabs)
+          .flat();
+
+        const tab = allTabs.find((tab) => {
+          return (
+            (tab.input as any).viewType ===
+            `mainThreadWebview-raceengineer.diff.${this.id}`
+          );
+        });
+
+        if (tab != undefined) {
+          await tabGroups.close(tab);
+        }
+
+        this.diffEditor = undefined;
+        this.latestDiffApplyContext = undefined;
       });
-
-      if (tab != undefined) {
-        await tabGroups.close(tab);
-      }
-
-      this.diffEditor = undefined;
-    });
+    }
 
     await this.diffEditor.updateDiff({
       oldCode: originalContent,

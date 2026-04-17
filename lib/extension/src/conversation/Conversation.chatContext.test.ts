@@ -88,11 +88,17 @@ describe("chat-en template repo context integration", () => {
       totalTokenCount: 12,
     });
 
-    const streamText = vi.fn().mockResolvedValue(
-      (async function* () {
+    const streamText = vi.fn().mockImplementation(async ({ prompt }) => {
+      if (prompt.includes("Create a very short chat title")) {
+        return (async function* () {
+          yield "Placeholder leak sanitizer";
+        })();
+      }
+
+      return (async function* () {
         yield "Found in sanitizeAutoCompleteResponse.";
-      })()
-    );
+      })();
+    });
 
     const ai = {
       getEmbeddingConfiguration() {
@@ -136,15 +142,19 @@ describe("chat-en template repo context integration", () => {
     expect(generateEmbedding).toHaveBeenCalledWith({
       input: "Find where autocomplete sanitizes obj['SUF'] placeholder leaks.",
     });
-    expect(streamText).toHaveBeenCalledTimes(1);
+    expect(streamText).toHaveBeenCalledTimes(2);
 
-    const streamTextInput = streamText.mock.calls[0]?.[0];
-    const prompt = streamTextInput?.prompt as string;
+    const chatPrompt = streamText.mock.calls[0]?.[0]?.prompt as string;
+    const titlePrompt = streamText.mock.calls[1]?.[0]?.prompt as string;
 
-    expect(prompt).toContain("Open Files Context");
-    expect(prompt).toContain("sanitizeAutoCompleteResponse.ts");
-    expect(prompt).toContain("Repository Search Results");
-    expect(prompt).toContain("KNOWN_PLACEHOLDER_SNIPPETS");
+    expect(chatPrompt).toContain("Open Files Context");
+    expect(chatPrompt).toContain("sanitizeAutoCompleteResponse.ts");
+    expect(chatPrompt).toContain("Repository Search Results");
+    expect(chatPrompt).toContain("KNOWN_PLACEHOLDER_SNIPPETS");
+    expect(titlePrompt).toContain("Create a very short chat title");
+
+    const webviewConversation = await conversation.toWebviewConversation();
+    expect(webviewConversation.header.title).toBe("Placeholder leak sanitizer");
   });
 
   it("answers repo question from mock repository context and avoids no-context fallback", async () => {
@@ -187,8 +197,13 @@ describe("chat-en template repo context integration", () => {
     const streamText = vi.fn().mockImplementation(async ({ prompt }) => {
       const hasRelevantChunk = prompt.includes("KNOWN_PLACEHOLDER_SNIPPETS");
       const hasQuestion = prompt.includes("obj['SUF']");
+      const isTitlePrompt = prompt.includes("Create a very short chat title");
 
       return (async function* () {
+        if (isTitlePrompt) {
+          yield "Placeholder sanitization lookup";
+          return;
+        }
         if (hasRelevantChunk && hasQuestion) {
           yield "Match found in lib/extension/src/autocomplete/sanitizeAutoCompleteResponse.ts.";
           return;
@@ -240,6 +255,7 @@ describe("chat-en template repo context integration", () => {
     const prompt = streamTextInput?.prompt as string;
     expect(prompt).toContain("Repository Search Results");
     expect(prompt).toContain("KNOWN_PLACEHOLDER_SNIPPETS");
+    expect(streamText).toHaveBeenCalledTimes(2);
 
     const webviewConversation = await conversation.toWebviewConversation();
     expect(webviewConversation.content.type).toBe("messageExchange");
@@ -254,5 +270,8 @@ describe("chat-en template repo context integration", () => {
         "I still do not have access to the repository"
       );
     }
+    expect(webviewConversation.header.title).toBe(
+      "Placeholder sanitization lookup"
+    );
   });
 });
