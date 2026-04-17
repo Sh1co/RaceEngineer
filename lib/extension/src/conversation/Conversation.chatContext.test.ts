@@ -387,6 +387,80 @@ describe("chat-en template repo context integration", () => {
     expect(prompt).toContain("https://example.com/telemetry");
   });
 
+  it("falls back to first user message title when AI title summary is empty", async () => {
+    __setWorkspaceFolder("C:\\mock-repo");
+
+    vi.spyOn(readFileContentModule, "readFileContent").mockResolvedValue(
+      JSON.stringify({
+        version: 0,
+        embedding: {
+          source: "ollama",
+          model: "nomic-embed-text",
+        },
+        chunks: [],
+      })
+    );
+
+    const generateEmbedding = vi.fn().mockResolvedValue({
+      type: "success" as const,
+      embedding: [1, 0, 0],
+      totalTokenCount: 3,
+    });
+
+    const streamText = vi.fn().mockImplementation(async ({ prompt }) => {
+      return (async function* () {
+        if (prompt.includes("Create a very short chat title")) {
+          yield "";
+          return;
+        }
+        yield "Answer body";
+      })();
+    });
+
+    const ai = {
+      getEmbeddingConfiguration() {
+        return { source: "ollama", model: "nomic-embed-text" };
+      },
+      isFileEditingEnabled() {
+        return false;
+      },
+      isWebSearchEnabled() {
+        return false;
+      },
+      async searchWeb() {
+        return [];
+      },
+      generateEmbedding,
+      streamText,
+    } as unknown as AIClient;
+
+    const templateMarkdown = await loadChatTemplateMarkdown();
+    const template = parseRubberduckTemplateOrThrow(templateMarkdown);
+
+    const conversation = new Conversation({
+      id: "conversation-5",
+      ai,
+      template,
+      initVariables: {
+        openFiles: [],
+        selectedText: "",
+      },
+      updateChatPanel: async () => {},
+      diffEditorManager: {
+        createDiffEditor: vi.fn(),
+      } as any,
+      diffData: undefined,
+      logger: loggerMock,
+    });
+
+    await conversation.answer("Please explain race telemetry basics today");
+
+    const webviewConversation = await conversation.toWebviewConversation();
+    expect(webviewConversation.header.title).toBe(
+      "Please explain race telemetry basics today"
+    );
+  });
+
   it("applies file rewrite blocks when file editing toggle is enabled", async () => {
     __setWorkspaceFolder("C:\\mock-repo");
 

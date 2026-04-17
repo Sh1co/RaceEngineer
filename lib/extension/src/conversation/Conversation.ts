@@ -282,16 +282,27 @@ export class Conversation {
       }
 
       const sanitizedSummary = this.sanitizeTitleSummary(summary);
-      if (sanitizedSummary.length === 0) {
-        return;
-      }
+      const finalSummary = this.selectBestTitleSummary({
+        aiSummary: sanitizedSummary,
+        fallbackSource: firstUserMessage,
+      });
 
-      this.titleSummary = sanitizedSummary;
-      await this.updateChatPanel();
+      if (finalSummary.length > 0) {
+        this.titleSummary = finalSummary;
+        await this.updateChatPanel();
+      }
     } catch (error) {
       this.logger.debug(
         `Failed to generate title summary: ${(error as Error)?.message ?? error}`
       );
+
+      const fallbackSummary = this.createFallbackTitleFromUserMessage(
+        firstUserMessage
+      );
+      if (fallbackSummary.length > 0) {
+        this.titleSummary = fallbackSummary;
+        await this.updateChatPanel();
+      }
     } finally {
       this.isGeneratingTitleSummary = false;
     }
@@ -343,6 +354,38 @@ export class Conversation {
     const collapsedWhitespace = withoutQuotes.replace(/\s+/g, " ").trim();
 
     return collapsedWhitespace.slice(0, 80);
+  }
+
+  private selectBestTitleSummary({
+    aiSummary,
+    fallbackSource,
+  }: {
+    aiSummary: string;
+    fallbackSource: string;
+  }): string {
+    const normalizedAiSummary = aiSummary.trim();
+    if (
+      normalizedAiSummary.length > 0 &&
+      normalizedAiSummary.toLowerCase() !== "new chat"
+    ) {
+      return normalizedAiSummary;
+    }
+
+    return this.createFallbackTitleFromUserMessage(fallbackSource);
+  }
+
+  private createFallbackTitleFromUserMessage(userMessage: string): string {
+    const cleaned = userMessage
+      .replace(/\r?\n/g, " ")
+      .replace(/[^\w\s\-./]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (cleaned.length === 0) {
+      return "";
+    }
+
+    return cleaned.split(" ").slice(0, 6).join(" ").slice(0, 80);
   }
 
   private async appendWebSearchContext(basePrompt: string): Promise<string> {
