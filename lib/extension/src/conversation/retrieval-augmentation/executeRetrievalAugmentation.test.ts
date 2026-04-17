@@ -77,6 +77,7 @@ describe("executeRetrievalAugmentation", () => {
 
     const chunks = await executeRetrievalAugmentation({
       retrievalAugmentation: {
+        type: "similarity-search",
         variableName: "context",
         source: "embedding-file",
         file: "privy-repository.json",
@@ -139,6 +140,7 @@ describe("executeRetrievalAugmentation", () => {
     await expect(
       executeRetrievalAugmentation({
         retrievalAugmentation: {
+          type: "similarity-search",
           variableName: "context",
           source: "embedding-file",
           file: "repository.json",
