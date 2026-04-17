@@ -14,11 +14,9 @@ export const ExpandedConversationView: React.FC<{
   onClickRebuildEmbedding: () => void;
   chatSettings: {
     enableThinking: boolean;
-    enableWebSearch: boolean;
     enableFileEditing: boolean;
   };
   onToggleThinking: (value: boolean) => void;
-  onToggleWebSearch: (value: boolean) => void;
   onToggleFileEditing: (value: boolean) => void;
   onClickInsertPrompt?: () => void;
 }> = ({
@@ -31,7 +29,6 @@ export const ExpandedConversationView: React.FC<{
   onClickRebuildEmbedding,
   chatSettings,
   onToggleThinking,
-  onToggleWebSearch,
   onToggleFileEditing,
   onClickInsertPrompt
 }) => {
@@ -93,15 +90,6 @@ export const ExpandedConversationView: React.FC<{
               onChange={(event) => onToggleThinking(event.target.checked)}
             />
             <span>Thinking</span>
-          </label>
-
-          <label className="footer-toggle">
-            <input
-              type="checkbox"
-              checked={chatSettings.enableWebSearch}
-              onChange={(event) => onToggleWebSearch(event.target.checked)}
-            />
-            <span>Web Search</span>
           </label>
 
           <label className="footer-toggle">

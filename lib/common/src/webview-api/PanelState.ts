@@ -12,7 +12,6 @@ export const panelStateSchema = zod
       surfacePromptForOpenAIPlus: zod.boolean(),
       settings: zod.object({
         enableThinking: zod.boolean(),
-        enableWebSearch: zod.boolean(),
         enableFileEditing: zod.boolean(),
       }),
       error: errorSchema.optional(),

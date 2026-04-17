@@ -13,7 +13,6 @@ export const outgoingMessageSchema = zod.discriminatedUnion("type", [
     data: zod.object({
       key: zod.enum([
         "enableThinking",
-        "enableWebSearch",
         "enableFileEditing",
       ]),
       value: zod.boolean(),

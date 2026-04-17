@@ -162,12 +162,6 @@ export const ChatPanelView: React.FC<{
               data: { key: "enableThinking", value },
             })
           }
-          onToggleWebSearch={(value) =>
-            sendMessage({
-              type: "setChatSetting",
-              data: { key: "enableWebSearch", value },
-            })
-          }
           onToggleFileEditing={(value) =>
             sendMessage({
               type: "setChatSetting",

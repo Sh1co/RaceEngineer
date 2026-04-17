@@ -13,7 +13,6 @@ function getChatSettings() {
   const configuration = vscode.workspace.getConfiguration("raceengineer");
   return {
     enableThinking: configuration.get("chat.enableThinking", false),
-    enableWebSearch: configuration.get("chat.enableWebSearch", false),
     enableFileEditing: configuration.get("chat.enableFileEditing", false),
   };
 }

@@ -223,47 +223,40 @@
           "scope": "application",
           "order": 9
         },
-        "raceengineer.chat.enableWebSearch": {
-          "type": "boolean",
-          "default": false,
-          "markdownDescription": "Enable web search for chat when supported by the active provider/integration.",
-          "scope": "application",
-          "order": 10
-        },
         "raceengineer.chat.enableFileEditing": {
           "type": "boolean",
           "default": false,
           "markdownDescription": "Allow chat to apply file rewrite edits directly to workspace files when requested.",
           "scope": "application",
-          "order": 11
+          "order": 10
         },
         "raceengineer.embedding.model": {
           "type": "string",
           "default": "nomic-embed-text",
           "markdownDescription": "Enter the name of Ollama model to use for repository/query embeddings.",
           "scope": "application",
-          "order": 12
+          "order": 11
         },
         "raceengineer.syntaxHighlighting.useVisualStudioCodeColors": {
           "type": "boolean",
           "default": false,
           "markdownDescription": "Use the Visual Studio Code Theme colors for syntax highlighting in the diff viewer. Might not work with all themes. Only applies to newly opened diffs.",
           "scope": "application",
-          "order": 13
+          "order": 12
         },
         "raceengineer.indexRepository.enabled": {
           "type": "boolean",
           "default": false,
           "markdownDescription": "Enable the command to index your repository and give more context to the AI model. Experimental.",
           "scope": "application",
-          "order": 14
+          "order": 13
         },
         "raceengineer.indexRepository.autoRebuildOnStartup": {
           "type": "boolean",
           "default": false,
           "markdownDescription": "Automatically rebuild repository embeddings once when VS Code starts and this extension activates.",
           "scope": "application",
-          "order": 15
+          "order": 14
         }
       }
     },
