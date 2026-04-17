@@ -5,9 +5,11 @@ import com.raceengineer.jetbrains.settings.RaceEngineerSettingsState
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
+import java.util.concurrent.TimeUnit
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class OllamaClientTest {
@@ -68,5 +70,78 @@ class OllamaClientTest {
     val second = mapper.readTree(server.takeRequest().body.readUtf8())
     assertEquals("\n", first.get("suffix").asText())
     assertEquals("\nreturn", second.get("suffix").asText())
+  }
+
+  @Test
+  fun `chat returns assistant message`() {
+    server.start()
+    server.enqueue(
+      MockResponse().setResponseCode(200).setBody(
+        """{"message":{"role":"assistant","content":"Hello from model"}}"""
+      )
+    )
+
+    val settings = RaceEngineerSettingsState().apply {
+      providerBaseUrl = server.url("/").toString().trimEnd('/')
+    }
+    val client = OllamaClient(settings, OkHttpClient(), mapper)
+    val response = client.chat("Say hello")
+
+    assertEquals("Hello from model", response)
+  }
+
+  @Test
+  fun `chat retries once after timeout and succeeds on second response`() {
+    server.start()
+    server.enqueue(
+      MockResponse()
+        .setResponseCode(200)
+        .setBody("""{"message":{"role":"assistant","content":"too late"}}""")
+        .setBodyDelay(2, TimeUnit.SECONDS)
+    )
+    server.enqueue(
+      MockResponse()
+        .setResponseCode(200)
+        .setBody("""{"message":{"role":"assistant","content":"second attempt works"}}""")
+    )
+
+    val settings = RaceEngineerSettingsState().apply {
+      providerBaseUrl = server.url("/").toString().trimEnd('/')
+      requestTimeoutSeconds = 1
+    }
+    val client = OllamaClient(settings)
+    val response = client.chat("retry please")
+
+    assertEquals("second attempt works", response)
+    assertEquals(2, server.requestCount)
+  }
+
+  @Test
+  fun `chat times out when model response exceeds configured timeout`() {
+    server.start()
+    server.enqueue(
+      MockResponse()
+        .setResponseCode(200)
+        .setBody("""{"message":{"role":"assistant","content":"late"}}""")
+        .setBodyDelay(2, TimeUnit.SECONDS)
+    )
+    server.enqueue(
+      MockResponse()
+        .setResponseCode(200)
+        .setBody("""{"message":{"role":"assistant","content":"late-again"}}""")
+        .setBodyDelay(2, TimeUnit.SECONDS)
+    )
+
+    val settings = RaceEngineerSettingsState().apply {
+      providerBaseUrl = server.url("/").toString().trimEnd('/')
+      requestTimeoutSeconds = 1
+    }
+    val client = OllamaClient(settings)
+
+    assertFailsWith<Exception> {
+      client.chat("slow")
+    }
+
+    assertEquals(2, server.requestCount)
   }
 }
