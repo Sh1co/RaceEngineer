@@ -7,6 +7,8 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.InterruptedIOException
+import java.util.concurrent.TimeUnit
 
 data class ChatRequest(
   val model: String,
@@ -26,7 +28,7 @@ data class InfillRequest(
 
 class OllamaClient(
   private val settings: RaceEngineerSettingsState,
-  private val http: OkHttpClient = OkHttpClient(),
+  private val http: OkHttpClient = createDefaultHttpClient(settings),
   private val mapper: ObjectMapper = jacksonObjectMapper(),
 ) {
   fun chat(userPrompt: String, maxTokens: Int = 1024): String {
@@ -44,16 +46,22 @@ class OllamaClient(
       .url("${settings.providerBaseUrl.trimEnd('/')}/api/chat")
       .post(mapper.writeValueAsString(body).toRequestBody("application/json".toMediaType()))
       .build()
-    http.newCall(request).execute().use { response ->
-      if (!response.isSuccessful) {
-        error("Chat request failed with status ${response.code}")
+    return withTimeoutRetry {
+      http.newCall(request).execute().use { response ->
+        if (!response.isSuccessful) {
+          error("Chat request failed with status ${response.code}")
+        }
+        val node = mapper.readTree(response.body?.string().orEmpty())
+        val error = node.get("error")?.asText()
+        if (!error.isNullOrBlank()) {
+          error(error)
+        }
+        val messageContent = node.path("message").path("content").asText("")
+        if (messageContent.isNotBlank()) {
+          return@withTimeoutRetry messageContent
+        }
+        return@withTimeoutRetry node.path("response").asText("")
       }
-      val node = mapper.readTree(response.body?.string().orEmpty())
-      val error = node.get("error")?.asText()
-      if (!error.isNullOrBlank()) {
-        error(error)
-      }
-      return node.get("message")?.get("content")?.asText().orEmpty()
     }
   }
 
@@ -76,19 +84,22 @@ class OllamaClient(
         .url("${settings.providerBaseUrl.trimEnd('/')}/api/generate")
         .post(mapper.writeValueAsString(body).toRequestBody("application/json".toMediaType()))
         .build()
-      http.newCall(request).execute().use { response ->
-        if (!response.isSuccessful) {
-          error("Infill request failed with status ${response.code}")
+      val responseText = withTimeoutRetry {
+        http.newCall(request).execute().use { response ->
+          if (!response.isSuccessful) {
+            error("Infill request failed with status ${response.code}")
+          }
+          val node = mapper.readTree(response.body?.string().orEmpty())
+          val error = node.get("error")?.asText()
+          if (!error.isNullOrBlank()) {
+            error(error)
+          }
+          node.get("response")?.asText().orEmpty()
         }
-        val node = mapper.readTree(response.body?.string().orEmpty())
-        val error = node.get("error")?.asText()
-        if (!error.isNullOrBlank()) {
-          error(error)
-        }
-        last = node.get("response")?.asText().orEmpty()
-        if (!isLowValueResponse(last, prefix)) {
-          return last
-        }
+      }
+      last = responseText
+      if (!isLowValueResponse(last, prefix)) {
+        return last
       }
     }
     return last
@@ -109,16 +120,18 @@ class OllamaClient(
       .url("${settings.providerBaseUrl.trimEnd('/')}/api/generate")
       .post(mapper.writeValueAsString(body).toRequestBody("application/json".toMediaType()))
       .build()
-    http.newCall(request).execute().use { response ->
-      if (!response.isSuccessful) {
-        error("Completion request failed with status ${response.code}")
+    return withTimeoutRetry {
+      http.newCall(request).execute().use { response ->
+        if (!response.isSuccessful) {
+          error("Completion request failed with status ${response.code}")
+        }
+        val node = mapper.readTree(response.body?.string().orEmpty())
+        val error = node.get("error")?.asText()
+        if (!error.isNullOrBlank()) {
+          error(error)
+        }
+        node.get("response")?.asText().orEmpty()
       }
-      val node = mapper.readTree(response.body?.string().orEmpty())
-      val error = node.get("error")?.asText()
-      if (!error.isNullOrBlank()) {
-        error(error)
-      }
-      return node.get("response")?.asText().orEmpty()
     }
   }
 
@@ -129,5 +142,47 @@ class OllamaClient(
     if (trimmed.equals("obj['middle_code']", true)) return true
     if (trimmed == prefix.trim()) return true
     return false
+  }
+
+  private fun <T> withTimeoutRetry(block: () -> T): T {
+    var attempt = 0
+    var lastError: Throwable? = null
+    while (attempt < 2) {
+      try {
+        return block()
+      } catch (error: Throwable) {
+        if (attempt == 0 && isTimeoutError(error)) {
+          lastError = error
+          attempt += 1
+          continue
+        }
+        throw error
+      }
+    }
+    throw lastError ?: IllegalStateException("Request failed")
+  }
+
+  private fun isTimeoutError(error: Throwable): Boolean {
+    var cursor: Throwable? = error
+    while (cursor != null) {
+      if (cursor is InterruptedIOException) {
+        return true
+      }
+      cursor = cursor.cause
+    }
+    return false
+  }
+
+  companion object {
+    fun createDefaultHttpClient(settings: RaceEngineerSettingsState): OkHttpClient {
+      val timeoutSeconds = settings.requestTimeoutSeconds.coerceAtLeast(1).toLong()
+      return OkHttpClient.Builder()
+        .connectTimeout(20, TimeUnit.SECONDS)
+        .readTimeout(timeoutSeconds, TimeUnit.SECONDS)
+        .writeTimeout(timeoutSeconds, TimeUnit.SECONDS)
+        .callTimeout(timeoutSeconds, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true)
+        .build()
+    }
   }
 }

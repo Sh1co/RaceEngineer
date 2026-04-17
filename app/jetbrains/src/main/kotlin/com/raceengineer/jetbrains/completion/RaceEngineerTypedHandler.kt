@@ -23,8 +23,7 @@ class RaceEngineerTypedHandler : TypedHandlerDelegate() {
       return Result.CONTINUE
     }
 
-    val shouldTrigger = charTyped.isLetterOrDigit() || charTyped == '_' || charTyped == '.' || charTyped == ':'
-    if (!shouldTrigger) {
+    if (!AutoPopupTriggerHeuristics.shouldTrigger(charTyped)) {
       return Result.CONTINUE
     }
 
@@ -34,5 +33,17 @@ class RaceEngineerTypedHandler : TypedHandlerDelegate() {
       null
     )
     return Result.CONTINUE
+  }
+}
+
+internal object AutoPopupTriggerHeuristics {
+  fun shouldTrigger(charTyped: Char): Boolean {
+    if (charTyped == '\n') {
+      return true
+    }
+    if (charTyped.isLetterOrDigit()) {
+      return true
+    }
+    return charTyped == '_' || charTyped == '.' || charTyped == ':' || charTyped == '>'
   }
 }

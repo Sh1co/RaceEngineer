@@ -12,6 +12,7 @@ class RaceEngineerSettingsState : PersistentStateComponent<RaceEngineerSettingsS
   var autocompleteMode: String = "automatic"
   var autocompleteModel: String = "qwen2.5-coder:1.5b"
   var autocompleteDebounceWait: Int = 300
+  var requestTimeoutSeconds: Int = 300
   var chatModel: String = "custom"
   var customModel: String = "qwen3.5:9b"
   var enableThinking: Boolean = false
@@ -24,6 +25,7 @@ class RaceEngineerSettingsState : PersistentStateComponent<RaceEngineerSettingsS
     autocompleteMode = state.autocompleteMode
     autocompleteModel = state.autocompleteModel
     autocompleteDebounceWait = state.autocompleteDebounceWait
+    requestTimeoutSeconds = state.requestTimeoutSeconds
     chatModel = state.chatModel
     customModel = state.customModel
     enableThinking = state.enableThinking

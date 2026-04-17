@@ -16,6 +16,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
+import java.nio.file.Path
 
 @Service(Service.Level.PROJECT)
 class RaceEngineerService(private val project: Project) {
@@ -25,6 +26,7 @@ class RaceEngineerService(private val project: Project) {
   private val logs = CopyOnWriteArrayList<String>()
   private val conversationLocks = ConcurrentHashMap<String, ReentrantLock>()
   private val busyConversations = ConcurrentHashMap.newKeySet<String>()
+  private val workspaceContextResolver = WorkspaceContextResolver()
   @Volatile
   private var selectedConversationId: String? = null
 
@@ -127,15 +129,15 @@ class RaceEngineerService(private val project: Project) {
     broadcast()
   }
 
-  private fun readActiveFileSnippet(file: VirtualFile?): String {
+  private fun readActiveFileSnippet(file: VirtualFile?, maxChars: Int = 1400): String {
     if (file == null || file.isDirectory) {
       return ""
     }
     val text = VfsUtilCore.loadText(file)
-    return if (text.length > 3000) text.take(3000) else text
+    return if (text.length > maxChars) text.take(maxChars) else text
   }
 
-  private fun readFileSnippet(file: VirtualFile, maxChars: Int = 2200): String {
+  private fun readFileSnippet(file: VirtualFile, maxChars: Int = 1200): String {
     if (file.isDirectory) {
       return ""
     }
@@ -150,8 +152,13 @@ class RaceEngineerService(private val project: Project) {
     val openFiles = FileEditorManager.getInstance(project).openFiles
       .filter { !it.isDirectory }
 
+    val workspaceRoot = project.basePath?.let { Path.of(it) }
     val openFileNames = openFiles.map { it.name }
-    val activeSnippet = readActiveFileSnippet(activeFile)
+    val workspaceMentionedFiles = workspaceRoot?.let {
+      workspaceContextResolver.findMentionedFiles(it, userMessage, maxFiles = 3)
+    } ?: emptyList()
+    val activeSnippetMaxChars = if (workspaceMentionedFiles.isEmpty()) 1400 else 800
+    val activeSnippet = readActiveFileSnippet(activeFile, activeSnippetMaxChars)
     val referencedFiles = openFiles.filter { file ->
       userMessage.contains(file.name, ignoreCase = true)
     }.take(3)
@@ -178,6 +185,17 @@ class RaceEngineerService(private val project: Project) {
           appendLine(file.path)
           appendLine("```")
           appendLine(readFileSnippet(file))
+          appendLine("```")
+          appendLine()
+        }
+      }
+
+      if (workspaceMentionedFiles.isNotEmpty()) {
+        appendLine("## Referenced Workspace Files")
+        workspaceMentionedFiles.forEach { file ->
+          appendLine(file.toString())
+          appendLine("```")
+          appendLine(workspaceContextResolver.readSnippet(file, maxChars = 1200))
           appendLine("```")
           appendLine()
         }
