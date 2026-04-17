@@ -1,0 +1,34 @@
+<idea-plugin>
+  <id>com.raceengineer.jetbrains</id>
+  <name>RaceEngineer</name>
+  <vendor email="raceengineer@local.dev" url="https://github.com/Sh1co/RaceEngineer">RaceEngineer</vendor>
+  <description><![CDATA[
+    RaceEngineer for Rider and IntelliJ-based IDEs.
+  ]]></description>
+
+  <depends>com.intellij.modules.platform</depends>
+  <depends>com.intellij.modules.lang</depends>
+  <depends>com.intellij.modules.java</depends>
+
+  <extensions defaultExtensionNs="com.intellij">
+    <toolWindow id="RaceEngineer" anchor="right" factoryClass="com.raceengineer.jetbrains.toolwindow.RaceEngineerToolWindowFactory" canCloseContents="false"/>
+    <completion.contributor language="any" implementationClass="com.raceengineer.jetbrains.completion.RaceEngineerCompletionContributor"/>
+    <projectService serviceImplementation="com.raceengineer.jetbrains.service.RaceEngineerService"/>
+    <applicationConfigurable instance="com.raceengineer.jetbrains.settings.RaceEngineerConfigurable" id="preferences.raceengineer" displayName="RaceEngineer"/>
+  </extensions>
+
+  <actions>
+    <group id="RaceEngineer.Actions" text="RaceEngineer" description="RaceEngineer actions" popup="true">
+      <add-to-group group-id="EditorPopupMenu" anchor="first"/>
+      <action id="RaceEngineer.StartChat" class="com.raceengineer.jetbrains.action.StartChatAction" text="Start Chat"/>
+      <action id="RaceEngineer.ExplainCode" class="com.raceengineer.jetbrains.action.ExplainCodeAction" text="Explain Code"/>
+      <action id="RaceEngineer.FindBugs" class="com.raceengineer.jetbrains.action.FindBugsAction" text="Find Bugs"/>
+      <action id="RaceEngineer.GenerateCode" class="com.raceengineer.jetbrains.action.GenerateCodeAction" text="Generate Code"/>
+      <action id="RaceEngineer.GenerateUnitTest" class="com.raceengineer.jetbrains.action.GenerateUnitTestAction" text="Generate Unit Test"/>
+      <action id="RaceEngineer.DiagnoseErrors" class="com.raceengineer.jetbrains.action.DiagnoseErrorsAction" text="Diagnose Errors"/>
+      <action id="RaceEngineer.ReloadTemplates" class="com.raceengineer.jetbrains.action.ReloadTemplatesAction" text="Reload Templates"/>
+      <action id="RaceEngineer.ShowLogs" class="com.raceengineer.jetbrains.action.ShowLogsAction" text="Show Logs"/>
+      <action id="RaceEngineer.TriggerCompletion" class="com.raceengineer.jetbrains.action.TriggerCompletionAction" text="Trigger Completion"/>
+    </group>
+  </actions>
+</idea-plugin>

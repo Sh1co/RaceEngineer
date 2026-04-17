@@ -1,2 +1,5 @@
 .DS_Store
 node_modules
+app/jetbrains/.gradle
+app/jetbrains/build
+app/jetbrains/.tools
