@@ -1,130 +1,164 @@
 package com.raceengineer.jetbrains.toolwindow
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
-import com.intellij.ui.components.JBList
-import com.intellij.ui.components.JBScrollPane
-import com.intellij.ui.components.JBTextArea
-import com.intellij.ui.components.JBTextField
+import com.intellij.ui.jcef.JBCefApp
+import com.intellij.ui.jcef.JBCefBrowser
+import com.intellij.ui.jcef.JBCefJSQuery
 import com.raceengineer.jetbrains.chat.ChatConversation
 import com.raceengineer.jetbrains.service.RaceEngineerService
 import java.awt.BorderLayout
-import java.awt.Dimension
-import javax.swing.DefaultListModel
-import javax.swing.JButton
 import javax.swing.JLabel
 import javax.swing.JPanel
-import javax.swing.JSplitPane
-import javax.swing.ListSelectionModel
 
 class RaceEngineerToolWindowPanel(private val project: Project) : JPanel(BorderLayout()) {
   private val service = RaceEngineerService.getInstance(project)
-  private val conversationModel = DefaultListModel<ChatConversation>()
-  private val conversationList = JBList(conversationModel)
-  private val transcriptArea = JBTextArea()
-  private val promptField = JBTextField()
-  private val sendButton = JButton("Send")
-  private val newChatButton = JButton("New Chat")
-  private val deleteButton = JButton("Delete")
+  private val mapper = jacksonObjectMapper()
+  private var browser: JBCefBrowser? = null
+  private var jsQuery: JBCefJSQuery? = null
   private val activeFile
     get() = FileEditorManager.getInstance(project).selectedFiles.firstOrNull()
 
-  private val listener: () -> Unit = { ApplicationManager.getApplication().invokeLater { render() } }
+  private val listener: () -> Unit = {
+    ApplicationManager.getApplication().invokeLater {
+      pushStateToWebview()
+    }
+  }
 
   init {
-    val top = JPanel(BorderLayout())
-    val actions = JPanel()
-    actions.add(newChatButton)
-    actions.add(deleteButton)
-    top.add(JLabel("RaceEngineer Chat"), BorderLayout.WEST)
-    top.add(actions, BorderLayout.EAST)
-
-    conversationList.selectionMode = ListSelectionModel.SINGLE_SELECTION
-    conversationList.cellRenderer = ConversationRenderer()
-    val listPane = JBScrollPane(conversationList)
-    listPane.preferredSize = Dimension(230, 200)
-
-    transcriptArea.isEditable = false
-    transcriptArea.lineWrap = true
-    transcriptArea.wrapStyleWord = true
-    val transcriptPane = JBScrollPane(transcriptArea)
-
-    val split = JSplitPane(JSplitPane.HORIZONTAL_SPLIT, listPane, transcriptPane)
-    split.resizeWeight = 0.25
-
-    val bottom = JPanel(BorderLayout())
-    bottom.add(promptField, BorderLayout.CENTER)
-    bottom.add(sendButton, BorderLayout.EAST)
-
-    add(top, BorderLayout.NORTH)
-    add(split, BorderLayout.CENTER)
-    add(bottom, BorderLayout.SOUTH)
-
-    newChatButton.addActionListener {
-      val conversation = service.createConversation("chat-en")
-      conversationList.setSelectedValue(conversation, true)
-    }
-    deleteButton.addActionListener {
-      val selected = conversationList.selectedValue ?: return@addActionListener
-      service.deleteConversation(selected.id)
-    }
-    sendButton.addActionListener { sendSelectedConversationPrompt() }
-    promptField.addActionListener { sendSelectedConversationPrompt() }
-    conversationList.addListSelectionListener { renderSelectedConversation() }
-
-    service.addListener(listener)
-    if (service.allConversations().isEmpty()) {
-      val conversation = service.createConversation("chat-en")
-      conversationList.setSelectedValue(conversation, true)
+    if (!JBCefApp.isSupported()) {
+      add(JLabel("RaceEngineer UI requires JCEF support in this IDE/runtime."), BorderLayout.CENTER)
     } else {
-      render()
+      val localBrowser = JBCefBrowser()
+      browser = localBrowser
+      val localQuery = JBCefJSQuery.create(localBrowser)
+      jsQuery = localQuery
+
+      localQuery.addHandler { payload ->
+        handleUiMessage(payload)
+        null
+      }
+
+      val html = loadChatHtml().replace("__RACEENGINEER_JS_QUERY__", localQuery.inject("payload"))
+      localBrowser.loadHTML(html)
+      add(localBrowser.component, BorderLayout.CENTER)
+
+      service.addListener(listener)
+      if (service.allConversations().isEmpty()) {
+        service.createConversation("chat-en")
+      } else if (service.getSelectedConversationId() == null) {
+        service.setSelectedConversationId(service.allConversations().firstOrNull()?.id)
+      }
+      ApplicationManager.getApplication().invokeLater { pushStateToWebview() }
     }
   }
 
   override fun removeNotify() {
     service.removeListener(listener)
+    jsQuery?.dispose()
+    browser?.dispose()
     super.removeNotify()
   }
 
-  private fun sendSelectedConversationPrompt() {
-    val selected = conversationList.selectedValue ?: return
-    val prompt = promptField.text.trim()
-    if (prompt.isBlank()) {
-      return
-    }
-    promptField.text = ""
-    ApplicationManager.getApplication().executeOnPooledThread {
-      service.sendMessage(selected.id, prompt, activeFile)
-    }
-  }
+  private fun handleUiMessage(payload: String) {
+    val root = mapper.readTree(payload)
+    val type = root.get("type")?.asText().orEmpty()
+    when (type) {
+      "startChat" -> {
+        val conversation = service.createConversation("chat-en")
+        service.setSelectedConversationId(conversation.id)
+        pushStateToWebview()
+      }
 
-  private fun render() {
-    val selectedId = conversationList.selectedValue?.id
-    conversationModel.clear()
-    service.allConversations().forEach { conversationModel.addElement(it) }
-    val nextSelection = service.allConversations().find { it.id == selectedId } ?: service.allConversations().firstOrNull()
-    if (nextSelection != null) {
-      conversationList.setSelectedValue(nextSelection, true)
-    }
-    renderSelectedConversation()
-  }
+      "deleteConversation" -> {
+        val conversationId = root.get("conversationId")?.asText()
+        if (!conversationId.isNullOrBlank()) {
+          service.deleteConversation(conversationId)
+          pushStateToWebview()
+        }
+      }
 
-  private fun renderSelectedConversation() {
-    val selected = conversationList.selectedValue
-    if (selected == null) {
-      transcriptArea.text = ""
-      return
-    }
+      "selectConversation" -> {
+        val conversationId = root.get("conversationId")?.asText()
+        if (!conversationId.isNullOrBlank()) {
+          service.setSelectedConversationId(conversationId)
+          pushStateToWebview()
+        }
+      }
 
-    val text = buildString {
-      selected.messages.forEach { message ->
-        appendLine(if (message.author == "user") "You:" else "RaceEngineer:")
-        appendLine(message.content)
-        appendLine()
+      "sendMessage" -> {
+        val prompt = root.get("message")?.asText()?.trim().orEmpty()
+        if (prompt.isBlank()) {
+          return
+        }
+        val conversationId = root.get("conversationId")?.asText()
+          ?: service.getSelectedConversationId()
+          ?: service.allConversations().firstOrNull()?.id
+          ?: service.createConversation("chat-en").id
+        service.setSelectedConversationId(conversationId)
+        ApplicationManager.getApplication().executeOnPooledThread {
+          service.sendMessage(conversationId, prompt, activeFile)
+        }
+      }
+
+      "reloadTemplates" -> {
+        service.reloadTemplates()
+      }
+
+      "showLogs" -> {
+        val logBody = if (service.allLogs().isEmpty()) "No logs yet." else service.allLogs().joinToString("\n")
+        com.intellij.openapi.ui.Messages.showInfoMessage(project, logBody, "RaceEngineer Logs")
       }
     }
-    transcriptArea.text = text
-    transcriptArea.caretPosition = transcriptArea.document.length
+  }
+
+  private fun pushStateToWebview() {
+    val localBrowser = browser ?: return
+    val conversations = service.allConversations()
+    var selectedConversationId = service.getSelectedConversationId()
+    if (selectedConversationId == null) {
+      selectedConversationId = conversations.firstOrNull()?.id
+      service.setSelectedConversationId(selectedConversationId)
+    }
+    val selected = conversations.find { it.id == selectedConversationId } ?: conversations.firstOrNull()
+    if (selected != null) {
+      selectedConversationId = selected.id
+      if (service.getSelectedConversationId() != selectedConversationId) {
+        service.setSelectedConversationId(selectedConversationId)
+      }
+    }
+
+    val state = mapOf(
+      "selectedConversationId" to selectedConversationId,
+      "conversations" to conversations.map { conversation ->
+        mapOf(
+          "id" to conversation.id,
+          "title" to conversation.title,
+          "templateId" to conversation.templateId,
+          "busy" to service.isConversationBusy(conversation.id),
+          "messages" to conversation.messages.map { message ->
+            mapOf(
+              "author" to message.author,
+              "content" to message.content
+            )
+          }
+        )
+      }
+    )
+
+    val json = mapper.writeValueAsString(state)
+    localBrowser.cefBrowser.executeJavaScript(
+      "window.raceEngineerUpdateState($json);",
+      localBrowser.cefBrowser.url,
+      0
+    )
+  }
+
+  private fun loadChatHtml(): String {
+    val stream = javaClass.getResourceAsStream("/web/chat.html")
+      ?: error("Missing chat web resource")
+    return stream.bufferedReader(Charsets.UTF_8).use { it.readText() }
   }
 }

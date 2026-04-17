@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RaceEngineer Chat</title>
+    <style>
+      :root {
+        --bg: #101317;
+        --panel: #161b22;
+        --panel-muted: #1d2430;
+        --border: #2b3340;
+        --text: #d6deeb;
+        --muted: #93a1b6;
+        --accent: #3f8cff;
+        --accent-hover: #66a3ff;
+        --danger: #ff6b6b;
+        --user: #1c4f8d;
+        --bot: #202a36;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", "Inter", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      .app {
+        height: 100vh;
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+
+      .toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(180deg, #1a202a 0%, #141922 100%);
+        padding: 8px 10px;
+      }
+
+      .toolbar-title {
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+      }
+
+      .toolbar-actions {
+        display: flex;
+        gap: 6px;
+      }
+
+      button {
+        border: 1px solid var(--border);
+        background: var(--panel-muted);
+        color: var(--text);
+        padding: 6px 10px;
+        border-radius: 8px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+
+      button:hover {
+        border-color: #3a4453;
+      }
+
+      button.primary {
+        border-color: #1f5ebf;
+        background: var(--accent);
+      }
+
+      button.primary:hover {
+        background: var(--accent-hover);
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 220px 1fr;
+        min-height: 0;
+      }
+
+      .history {
+        border-right: 1px solid var(--border);
+        background: #121821;
+        overflow: auto;
+        padding: 10px 8px;
+      }
+
+      .history-item {
+        border: 1px solid transparent;
+        border-radius: 9px;
+        margin-bottom: 8px;
+        padding: 9px;
+        cursor: pointer;
+        background: #17202b;
+      }
+
+      .history-item:hover {
+        border-color: #394657;
+      }
+
+      .history-item.active {
+        border-color: #3d79d4;
+        background: #1f2a38;
+      }
+
+      .history-title {
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .history-meta {
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 11px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .history-busy {
+        color: #ffcf5d;
+      }
+
+      .chat {
+        display: grid;
+        grid-template-rows: 1fr auto;
+        min-height: 0;
+      }
+
+      .messages {
+        padding: 14px;
+        overflow: auto;
+      }
+
+      .empty {
+        color: var(--muted);
+        font-size: 13px;
+        border: 1px dashed var(--border);
+        border-radius: 10px;
+        padding: 16px;
+      }
+
+      .message {
+        max-width: 92%;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        margin-bottom: 10px;
+        padding: 10px 12px;
+        white-space: pre-wrap;
+        line-height: 1.4;
+        font-size: 13px;
+      }
+
+      .message.user {
+        margin-left: auto;
+        background: var(--user);
+        border-color: #2f6ab4;
+      }
+
+      .message.bot {
+        background: var(--bot);
+      }
+
+      .composer {
+        border-top: 1px solid var(--border);
+        padding: 10px;
+        background: #141a23;
+      }
+
+      .composer-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+      }
+
+      textarea {
+        width: 100%;
+        height: 72px;
+        resize: vertical;
+        border-radius: 9px;
+        border: 1px solid var(--border);
+        background: #11161f;
+        color: var(--text);
+        padding: 9px;
+        font-size: 13px;
+        font-family: "Consolas", "JetBrains Mono", monospace;
+      }
+
+      .danger {
+        border-color: #a64a4a;
+        color: #ffc1c1;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <div class="toolbar">
+        <div class="toolbar-title">RaceEngineer Chat</div>
+        <div class="toolbar-actions">
+          <button id="newChat" class="primary">New Chat</button>
+          <button id="reloadTemplates">Reload</button>
+          <button id="showLogs">Logs</button>
+        </div>
+      </div>
+      <div class="layout">
+        <div class="history" id="history"></div>
+        <div class="chat">
+          <div class="messages" id="messages"></div>
+          <div class="composer">
+            <div class="composer-row">
+              <textarea id="prompt" placeholder="Ask about code, file, bug, test..."></textarea>
+              <button id="send" class="primary">Send</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let panelState = {
+        selectedConversationId: null,
+        conversations: [],
+      };
+
+      const historyEl = document.getElementById("history");
+      const messagesEl = document.getElementById("messages");
+      const promptEl = document.getElementById("prompt");
+      const sendEl = document.getElementById("send");
+
+      function post(message) {
+        const payload = JSON.stringify(message);
+        __RACEENGINEER_JS_QUERY__;
+      }
+
+      function escapeHtml(value) {
+        return value
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;");
+      }
+
+      function getSelectedConversation() {
+        return (
+          panelState.conversations.find(
+            (conversation) => conversation.id === panelState.selectedConversationId
+          ) ?? panelState.conversations[0]
+        );
+      }
+
+      function renderHistory() {
+        if (panelState.conversations.length === 0) {
+          historyEl.innerHTML = '<div class="empty">No conversations yet.</div>';
+          return;
+        }
+
+        historyEl.innerHTML = panelState.conversations
+          .map((conversation) => {
+            const active = conversation.id === panelState.selectedConversationId ? "active" : "";
+            const busy = conversation.busy
+              ? '<span class="history-busy">thinking...</span>'
+              : `<span>${escapeHtml(conversation.templateId)}</span>`;
+            return `
+              <div class="history-item ${active}" data-conversation-id="${conversation.id}">
+                <div class="history-title">${escapeHtml(conversation.title)}</div>
+                <div class="history-meta">${busy}</div>
+              </div>
+            `;
+          })
+          .join("");
+
+        historyEl.querySelectorAll("[data-conversation-id]").forEach((node) => {
+          node.addEventListener("click", () => {
+            post({
+              type: "selectConversation",
+              conversationId: node.getAttribute("data-conversation-id"),
+            });
+          });
+        });
+      }
+
+      function renderMessages() {
+        const conversation = getSelectedConversation();
+        if (!conversation) {
+          messagesEl.innerHTML =
+            '<div class="empty">Start chat to talk with RaceEngineer.</div>';
+          return;
+        }
+
+        const messageHtml = conversation.messages
+          .map((message) => {
+            const klass = message.author === "user" ? "user" : "bot";
+            return `<div class="message ${klass}">${escapeHtml(message.content)}</div>`;
+          })
+          .join("");
+
+        const busy = conversation.busy
+          ? '<div class="message bot">Working on request...</div>'
+          : "";
+
+        messagesEl.innerHTML = messageHtml + busy;
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
+
+      function sendPrompt() {
+        const text = promptEl.value.trim();
+        if (!text) return;
+        const conversation = getSelectedConversation();
+        if (!conversation) return;
+        promptEl.value = "";
+        post({
+          type: "sendMessage",
+          conversationId: conversation.id,
+          message: text,
+        });
+      }
+
+      document.getElementById("newChat").addEventListener("click", () => {
+        post({ type: "startChat" });
+      });
+      document.getElementById("reloadTemplates").addEventListener("click", () => {
+        post({ type: "reloadTemplates" });
+      });
+      document.getElementById("showLogs").addEventListener("click", () => {
+        post({ type: "showLogs" });
+      });
+      sendEl.addEventListener("click", sendPrompt);
+      promptEl.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && !event.shiftKey) {
+          event.preventDefault();
+          sendPrompt();
+        }
+      });
+
+      window.raceEngineerUpdateState = function updateState(nextState) {
+        panelState = nextState || {
+          selectedConversationId: null,
+          conversations: [],
+        };
+        renderHistory();
+        renderMessages();
+      };
+    </script>
+  </body>
+</html>

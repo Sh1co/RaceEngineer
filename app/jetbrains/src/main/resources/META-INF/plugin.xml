@@ -8,11 +8,11 @@
 
   <depends>com.intellij.modules.platform</depends>
   <depends>com.intellij.modules.lang</depends>
-  <depends>com.intellij.modules.java</depends>
 
   <extensions defaultExtensionNs="com.intellij">
     <toolWindow id="RaceEngineer" anchor="right" factoryClass="com.raceengineer.jetbrains.toolwindow.RaceEngineerToolWindowFactory" canCloseContents="false"/>
     <completion.contributor language="any" implementationClass="com.raceengineer.jetbrains.completion.RaceEngineerCompletionContributor"/>
+    <typedHandler implementation="com.raceengineer.jetbrains.completion.RaceEngineerTypedHandler"/>
     <projectService serviceImplementation="com.raceengineer.jetbrains.service.RaceEngineerService"/>
     <applicationConfigurable instance="com.raceengineer.jetbrains.settings.RaceEngineerConfigurable" id="preferences.raceengineer" displayName="RaceEngineer"/>
   </extensions>

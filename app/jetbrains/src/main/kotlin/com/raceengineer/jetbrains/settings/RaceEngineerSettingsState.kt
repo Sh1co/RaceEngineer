@@ -36,6 +36,7 @@ class RaceEngineerSettingsState : PersistentStateComponent<RaceEngineerSettingsS
   companion object {
     fun getInstance(): RaceEngineerSettingsState {
       return ApplicationManager.getApplication().getService(RaceEngineerSettingsState::class.java)
+        ?: RaceEngineerSettingsState()
     }
   }
 }

@@ -8,7 +8,7 @@ import javax.swing.JComboBox
 import javax.swing.JComponent
 
 class RaceEngineerConfigurable : Configurable {
-  private val state = RaceEngineerSettingsState.getInstance()
+  private fun state(): RaceEngineerSettingsState = RaceEngineerSettingsState.getInstance()
 
   private lateinit var provider: JComboBox<String>
   private lateinit var providerBaseUrl: JBTextField
@@ -49,6 +49,7 @@ class RaceEngineerConfigurable : Configurable {
   }
 
   override fun isModified(): Boolean {
+    val state = state()
     return provider.selectedItem != state.provider ||
       providerBaseUrl.text != state.providerBaseUrl ||
       autocompleteMode.selectedItem != state.autocompleteMode ||
@@ -60,6 +61,7 @@ class RaceEngineerConfigurable : Configurable {
   }
 
   override fun apply() {
+    val state = state()
     state.provider = provider.selectedItem as String
     state.providerBaseUrl = providerBaseUrl.text.trim().trimEnd('/')
     state.autocompleteMode = autocompleteMode.selectedItem as String
@@ -71,6 +73,7 @@ class RaceEngineerConfigurable : Configurable {
   }
 
   override fun reset() {
+    val state = state()
     provider.selectedItem = state.provider
     providerBaseUrl.text = state.providerBaseUrl
     autocompleteMode.selectedItem = state.autocompleteMode
