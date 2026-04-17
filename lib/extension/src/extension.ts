@@ -149,8 +149,8 @@ export const activate = async (context: vscode.ExtensionContext) => {
       mainOutputChannel.show(true);
     }),
 
-    vscode.commands.registerCommand("privy.indexRepository", () => {
-      indexRepository({
+    vscode.commands.registerCommand("privy.indexRepository", async () => {
+      return indexRepository({
         ai: ai,
         outputChannel: indexOutputChannel,
       });

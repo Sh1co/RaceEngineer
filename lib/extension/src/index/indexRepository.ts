@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import path from "node:path";
 import { simpleGit } from "simple-git";
 import * as vscode from "vscode";
 import { AIClient } from "../ai/AIClient";
@@ -110,24 +111,32 @@ export async function indexRepository({
   );
 
   if (!cancelled) {
-    // TODO potential bug on windows
-    const filename = `${repositoryPath}/.privy/embedding/repository.json`;
+    const embeddingDir = path.join(repositoryPath, ".privy", "embedding");
+    const primaryFilename = path.join(embeddingDir, "privy-repository.json");
+    const legacyFilename = path.join(embeddingDir, "repository.json");
+    const embeddingConfiguration = ai.getEmbeddingConfiguration();
 
-    // TODO potential bug on windows
-    await fs.mkdir(`${repositoryPath}/.privy/embedding`, {
+    await fs.mkdir(embeddingDir, {
       recursive: true,
     });
 
+    const serializedContent = JSON.stringify({
+      version: 0,
+      embedding: {
+        source: embeddingConfiguration.source,
+        model: embeddingConfiguration.model,
+      },
+      chunks: chunksWithEmbedding,
+    });
+
     await fs.writeFile(
-      filename,
-      JSON.stringify({
-        version: 0,
-        embedding: {
-          source: "openai",
-          model: "text-embedding-ada-002",
-        },
-        chunks: chunksWithEmbedding,
-      })
+      primaryFilename,
+      serializedContent
+    );
+
+    await fs.writeFile(
+      legacyFilename,
+      serializedContent
     );
   }
 

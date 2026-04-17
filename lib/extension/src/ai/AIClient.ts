@@ -1,12 +1,9 @@
 import {
-  OpenAITextEmbeddingResponse,
   InstructionPrompt,
   TextStreamingModel,
-  embed,
   llamacpp,
   LlamaCppApiConfiguration,
   ollama,
-  openai,
   streamText,
   generateText,
 } from "modelfusion";
@@ -20,6 +17,30 @@ type ProviderName = "llamafile" | "llama.cpp" | "Ollama" | "OpenAI";
 type OllamaGenerateResponse = {
   response?: unknown;
   error?: unknown;
+};
+
+type OllamaChatMessage = {
+  role: "system" | "user" | "assistant";
+  content: string;
+};
+
+type OllamaChatStreamChunk = {
+  message?: {
+    content?: unknown;
+  };
+  error?: unknown;
+  done?: unknown;
+};
+
+type OllamaEmbedResponse = {
+  embeddings?: unknown;
+  error?: unknown;
+  prompt_eval_count?: unknown;
+};
+
+type EmbeddingConfiguration = {
+  source: string;
+  model: string;
 };
 
 const KNOWN_PLACEHOLDER_RESPONSE_PATTERNS = [
@@ -113,10 +134,29 @@ function getAutoCompleteModel(): string {
     .get("model", "");
 }
 
+function getEmbeddingModel(): string {
+  return vscode.workspace
+    .getConfiguration("privy.embedding")
+    .get("model", "nomic-embed-text");
+}
+
 function getProvider() {
   return z
     .enum(["llamafile", "llama.cpp", "Ollama", "OpenAI"])
     .parse(vscode.workspace.getConfiguration("privy").get("provider")) as ProviderName;
+}
+
+function getChatEnableThinking(): boolean {
+  return vscode.workspace
+    .getConfiguration("privy")
+    .get("chat.enableThinking", false);
+}
+
+function isQwenChatModel(model: string): boolean {
+  const normalizedModel = model.trim().toLowerCase();
+  return (
+    normalizedModel.startsWith("qwen3.5") || normalizedModel.startsWith("qwen3")
+  );
 }
 
 function getPromptTemplate() {
@@ -155,6 +195,17 @@ export class AIClient {
 
   public getProvider(): ProviderName {
     return getProvider();
+  }
+
+  public getEmbeddingConfiguration(): EmbeddingConfiguration {
+    return {
+      source: "ollama",
+      model: getEmbeddingModel(),
+    };
+  }
+
+  public shouldUseNativeOllamaQwenChat(): boolean {
+    return this.getProvider() === "Ollama" && isQwenChatModel(this.getModel());
   }
 
   private async getProviderApiConfiguration() {
@@ -243,6 +294,45 @@ export class AIClient {
     temperature?: number | undefined;
   }) {
     this.logger.log(["--- Start prompt ---", prompt, "--- End prompt ---"]);
+
+    if (this.shouldUseNativeOllamaQwenChat()) {
+      const response = await fetch(`${getProviderBaseUrl()}/api/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: this.getModel(),
+          messages: [
+            {
+              role: "system",
+              content: "You are a Bot who is here to assist Developer.",
+            } satisfies OllamaChatMessage,
+            { role: "user", content: prompt } satisfies OllamaChatMessage,
+          ],
+          think: getChatEnableThinking(),
+          stream: true,
+          options: {
+            temperature,
+            num_predict: maxTokens,
+            ...(stop == null ? {} : { stop }),
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Chat request failed with status ${response.status} for model ${this.getModel()}.`
+        );
+      }
+
+      if (response.body == null) {
+        throw new Error("Chat response stream body was empty.");
+      }
+
+      return this.streamOllamaChatContent(response.body);
+    }
+
     return streamText({
       model: await this.getTextStreamingModel({ maxTokens, stop, temperature }),
       prompt: {
@@ -354,21 +444,55 @@ export class AIClient {
   }
 
   async generateEmbedding({ input }: { input: string }) {
+    if (this.getProvider() !== "Ollama") {
+      throw new Error(
+        "Embedding generation requires privy.provider to be set to Ollama."
+      );
+    }
+
     try {
-      const { embedding, rawResponse } = await embed({
-        model: openai.TextEmbedder({
-          api: await this.getProviderApiConfiguration(),
-          model: "text-embedding-ada-002",
+      const response = await fetch(`${getProviderBaseUrl()}/api/embed`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: getEmbeddingModel(),
+          input,
         }),
-        value: input,
-        fullResponse: true,
       });
+
+      if (!response.ok) {
+        throw new Error(
+          `Embedding request failed with status ${response.status} for model ${getEmbeddingModel()}.`
+        );
+      }
+
+      const data = (await response.json()) as OllamaEmbedResponse;
+
+      if (typeof data.error === "string" && data.error.length > 0) {
+        throw new Error(data.error);
+      }
+
+      if (!Array.isArray(data.embeddings) || data.embeddings.length === 0) {
+        throw new Error("Embedding response did not contain vectors.");
+      }
+
+      const firstEmbedding = data.embeddings[0];
+      if (
+        !Array.isArray(firstEmbedding) ||
+        !firstEmbedding.every((value) => typeof value === "number")
+      ) {
+        throw new Error("Embedding response vector format was invalid.");
+      }
 
       return {
         type: "success" as const,
-        embedding,
-        totalTokenCount: (rawResponse as OpenAITextEmbeddingResponse).usage
-          ?.total_tokens,
+        embedding: firstEmbedding,
+        totalTokenCount:
+          typeof data.prompt_eval_count === "number"
+            ? data.prompt_eval_count
+            : undefined,
       };
     } catch (error: any) {
       console.log(error);
@@ -378,5 +502,62 @@ export class AIClient {
         errorMessage: error?.message,
       };
     }
+  }
+
+  private async *streamOllamaChatContent(
+    body: ReadableStream<Uint8Array>
+  ): AsyncGenerator<string> {
+    const reader = body.getReader();
+    const decoder = new TextDecoder();
+    let buffered = "";
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) {
+        break;
+      }
+
+      buffered += decoder.decode(value, { stream: true });
+      let newlineIndex = buffered.indexOf("\n");
+      while (newlineIndex >= 0) {
+        const line = buffered.slice(0, newlineIndex).trim();
+        buffered = buffered.slice(newlineIndex + 1);
+
+        if (line.length > 0) {
+          const content = this.parseOllamaChatStreamLine(line);
+          if (content.length > 0) {
+            yield content;
+          }
+        }
+
+        newlineIndex = buffered.indexOf("\n");
+      }
+    }
+
+    buffered += decoder.decode();
+    const tail = buffered.trim();
+    if (tail.length > 0) {
+      const content = this.parseOllamaChatStreamLine(tail);
+      if (content.length > 0) {
+        yield content;
+      }
+    }
+  }
+
+  private parseOllamaChatStreamLine(line: string): string {
+    let parsed: OllamaChatStreamChunk;
+    try {
+      parsed = JSON.parse(line) as OllamaChatStreamChunk;
+    } catch (error) {
+      throw new Error(`Failed to parse chat stream line: ${line}`);
+    }
+
+    if (typeof parsed.error === "string" && parsed.error.length > 0) {
+      throw new Error(parsed.error);
+    }
+
+    return typeof parsed.message?.content === "string"
+      ? parsed.message.content
+      : "";
   }
 }

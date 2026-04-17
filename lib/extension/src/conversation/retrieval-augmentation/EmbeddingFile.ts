@@ -13,8 +13,8 @@ export type ChunkWithContent = zod.infer<typeof chunkSchema>;
 export const embeddingFileSchema = zod.object({
   version: zod.literal(0),
   embedding: zod.object({
-    source: zod.literal("openai"),
-    model: zod.literal("text-embedding-ada-002"),
+    source: zod.string(),
+    model: zod.string(),
   }),
   chunks: zod.array(chunkSchema),
 });

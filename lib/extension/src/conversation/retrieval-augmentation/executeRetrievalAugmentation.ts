@@ -5,7 +5,7 @@ import { AIClient } from "../../ai/AIClient";
 import { readFileContent } from "../../vscode/readFileContent";
 import { RetrievalAugmentation } from "../template/RubberduckTemplate";
 import { cosineSimilarity } from "./cosineSimilarity";
-import { embeddingFileSchema } from "./EmbeddingFile";
+import { EmbeddingFile, embeddingFileSchema } from "./EmbeddingFile";
 
 export async function executeRetrievalAugmentation({
   retrievalAugmentation,
@@ -26,17 +26,21 @@ export async function executeRetrievalAugmentation({
     }>
   | undefined
 > {
-  const file = retrievalAugmentation.file;
+  const embeddingConfig = ai.getEmbeddingConfiguration();
+  let embeddingFile = await loadEmbeddingFile(retrievalAugmentation.file);
 
-  const fileUri = vscode.Uri.joinPath(
-    vscode.workspace.workspaceFolders?.[0]?.uri ?? vscode.Uri.file(""),
-    ".privy/embedding",
-    file
-  );
+  if (!isEmbeddingConfigCompatible(embeddingFile.embedding, embeddingConfig)) {
+    await vscode.commands.executeCommand("privy.indexRepository");
+    embeddingFile = await loadEmbeddingFile(retrievalAugmentation.file);
 
-  const fileContent = await readFileContent(fileUri);
-  const parsedContent = secureJSON.parse(fileContent);
-  const { chunks } = embeddingFileSchema.parse(parsedContent);
+    if (!isEmbeddingConfigCompatible(embeddingFile.embedding, embeddingConfig)) {
+      throw new Error(
+        `Embedding index metadata mismatch after reindex. Expected ${embeddingConfig.source}/${embeddingConfig.model}, got ${embeddingFile.embedding.source}/${embeddingFile.embedding.model}.`
+      );
+    }
+  }
+
+  const { chunks } = embeddingFile;
 
   // expand query with variables:
   const query = Handlebars.compile(retrievalAugmentation.query, {
@@ -51,8 +55,9 @@ export async function executeRetrievalAugmentation({
   });
 
   if (result.type === "error") {
-    console.log(result.errorMessage);
-    return undefined;
+    throw new Error(
+      result.errorMessage ?? "Failed to generate embedding for retrieval query."
+    );
   }
 
   const queryEmbedding = result.embedding!;
@@ -77,4 +82,69 @@ export async function executeRetrievalAugmentation({
       endPosition: chunk.endPosition,
       content: chunk.content,
     }));
+}
+
+function getFileCandidates(file: string): string[] {
+  if (file === "repository.json" || file === "privy-repository.json") {
+    return ["privy-repository.json", "repository.json"];
+  }
+  return [file];
+}
+
+async function loadEmbeddingFile(file: string): Promise<EmbeddingFile> {
+  const workspaceRoot =
+    vscode.workspace.workspaceFolders?.[0]?.uri ?? vscode.Uri.file("");
+  const candidates = getFileCandidates(file);
+
+  let lastError: unknown;
+  for (const candidate of candidates) {
+    const fileUri = vscode.Uri.joinPath(
+      workspaceRoot,
+      ".privy/embedding",
+      candidate
+    );
+
+    try {
+      const fileContent = await readFileContent(fileUri);
+      const parsedContent = secureJSON.parse(fileContent);
+      return embeddingFileSchema.parse(parsedContent);
+    } catch (error) {
+      if (isFileNotFoundError(error)) {
+        lastError = error;
+        continue;
+      }
+
+      throw error;
+    }
+  }
+
+  throw new Error(
+    `Embedding index file not found for '${file}' in .privy/embedding. Last error: ${
+      (lastError as Error | undefined)?.message ?? "unknown"
+    }`
+  );
+}
+
+function isFileNotFoundError(error: unknown): boolean {
+  if (error == null || typeof error !== "object") {
+    return false;
+  }
+
+  const code = (error as { code?: unknown }).code;
+  if (code === "ENOENT" || code === "FileNotFound") {
+    return true;
+  }
+
+  const message = (error as { message?: unknown }).message;
+  return typeof message === "string" && /FileNotFound|ENOENT/i.test(message);
+}
+
+function isEmbeddingConfigCompatible(
+  metadata: { source: string; model: string },
+  current: { source: string; model: string }
+): boolean {
+  return (
+    metadata.source.toLowerCase() === current.source.toLowerCase() &&
+    metadata.model.toLowerCase() === current.model.toLowerCase()
+  );
 }
