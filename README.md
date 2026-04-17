@@ -49,15 +49,11 @@ Use separate models for completion/chat/embedding:
 - Not available on VS Code Marketplace yet.
 - Need to build and install locally.
 
-### JetBrains plugin (Rider-first EAP)
+### JetBrains plugin (archived WIP)
 
-- New module: `app/jetbrains`
-- Build plugin zip with:
-  - `gradle -p app/jetbrains buildPlugin`
-- Output zip:
-  - `app/jetbrains/build/distributions/*.zip`
-- Install in Rider/IntelliJ:
-  - `Settings -> Plugins -> Install Plugin from Disk...`
+- Status: archived for now, not working reliably yet (including Rider 2024.2).
+- Module remains in repo at `app/jetbrains` for future continuation.
+- Do not use for production/editor workflow at this time.
 
 ## Configuration
 
@@ -83,13 +79,7 @@ Set these VS Code settings:
 
 ## JetBrains status
 
-Current JetBrains v1 includes:
-- Chat tool window
-- Action parity (`Start Chat`, `Explain Code`, `Find Bugs`, `Generate Code`, `Generate Unit Test`, `Diagnose Errors`, `Reload Templates`, `Show Logs`)
-- Ollama chat + autocomplete strategy support (qwen infill + deepseek/stable/default prompt modes)
-- Chat timeout control (`requestTimeoutSeconds`) + transient-timeout retry
-- Workspace file mention context (`File.cs`, `src/path/File.cs`) for chat prompts
-- Rider-oriented regression tests for sanitize/normalize/strategy, completion engine flow, timeout/retry behavior, and workspace mention resolution
+JetBrains plugin is archived WIP and currently not functional enough for use.
 
 Deferred parity items are tracked in:
 - [`doc/jetbrains-not-transferred-yet.md`](./doc/jetbrains-not-transferred-yet.md)

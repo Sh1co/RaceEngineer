@@ -1,8 +1,9 @@
-# RaceEngineer JetBrains Plugin (Rider-first)
+# RaceEngineer JetBrains Plugin (Archived WIP)
 
 This module contains the first Rider/JetBrains implementation of RaceEngineer.
+Current status: archived for now. It does not work reliably yet (including Rider 2024.2), so treat this module as parked work-in-progress.
 
-## Current v1 feature set
+## Archived scope snapshot
 
 - Chat tool window with in-memory conversation tabs.
 - Action menu parity for:
@@ -24,7 +25,7 @@ This module contains the first Rider/JetBrains implementation of RaceEngineer.
   - Rider typing heuristics (`letter/digit`, `.`, `_`, `:`, `>`, newline) + prefix-filter bypass for popup visibility.
 - Kotlin regression tests for strategy/sanitize/normalize, completion engine flow, timeout/retry behavior, and workspace file context resolution.
 
-## Build and test
+## Build and test (only if explicitly resuming this work)
 
 Prerequisites:
 - Java 17+
