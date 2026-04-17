@@ -434,8 +434,19 @@ export class Conversation {
   }
 
   private appendFileEditInstructions(basePrompt: string): string {
-    if (!this.ai.isFileEditingEnabled()) {
-      return basePrompt;
+    const isFileEditingEnabled = this.ai.isFileEditingEnabled();
+
+    if (!isFileEditingEnabled) {
+      return [
+        basePrompt,
+        "",
+        "## File Editing Mode (Disabled)",
+        "You cannot apply workspace file edits in this response.",
+        "If user asks to create or modify files:",
+        "- Show the exact full file updates you would make, grouped by workspace-relative path.",
+        "- Do not emit <file_edit> blocks while disabled.",
+        "- End your response by asking whether to enable Code Edits so you can apply the changes.",
+      ].join("\n");
     }
 
     return [

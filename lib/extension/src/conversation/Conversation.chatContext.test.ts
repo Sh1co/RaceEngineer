@@ -161,6 +161,13 @@ describe("chat-en template repo context integration", () => {
     expect(chatPrompt).toContain("sanitizeAutoCompleteResponse.ts");
     expect(chatPrompt).toContain("Repository Search Results");
     expect(chatPrompt).toContain("KNOWN_PLACEHOLDER_SNIPPETS");
+    expect(chatPrompt).toContain("## File Editing Mode (Disabled)");
+    expect(chatPrompt).toContain(
+      "Do not emit <file_edit> blocks while disabled."
+    );
+    expect(chatPrompt).toContain(
+      "End your response by asking whether to enable Code Edits"
+    );
     expect(titlePrompt).toContain("Create a very short chat title");
 
     const webviewConversation = await conversation.toWebviewConversation();
@@ -544,6 +551,10 @@ describe("chat-en template repo context integration", () => {
     });
 
     await conversation.answer("Please update lib/example.ts");
+
+    const prompt = streamText.mock.calls[0]?.[0]?.prompt as string;
+    expect(prompt).toContain("## File Editing Mode (Enabled)");
+    expect(prompt).toContain('<file_edit path="relative/path/from/workspace">');
 
     expect(mkdirMock).toHaveBeenCalled();
     expect(writeFileMock).toHaveBeenCalledWith(
