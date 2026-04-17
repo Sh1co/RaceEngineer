@@ -329,24 +329,42 @@ body {
 
 .action-panel {
   display: flex;
+  align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .footer-left {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   color: var(--vscode-foreground);
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+.footer-left > * {
+  flex: 0 0 auto;
+  margin-top: 0;
+  margin-bottom: 0;
 }
 
 .footer-rebuild-button {
   margin: 0;
   border-radius: 999px;
-  border: 1px solid var(--chat-border);
-  background: color-mix(in srgb, var(--vscode-inputOption-activeBackground) 32%, var(--chat-surface-2));
+  border: 1px solid color-mix(in srgb, var(--chat-border) 90%, transparent);
+  background: color-mix(in srgb, var(--chat-surface-2) 78%, var(--vscode-editor-background));
   color: var(--vscode-foreground);
   width: auto;
-  padding: 4px 10px;
+  padding: 6px 14px;
+  min-width: 180px;
+  font-weight: 600;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--vscode-widget-shadow) 35%, transparent);
+}
+
+.footer-rebuild-button:hover {
+  background: color-mix(in srgb, var(--vscode-button-secondaryHoverBackground) 70%, var(--chat-surface-2));
 }
 
 .footer-toggle {
@@ -354,6 +372,7 @@ body {
   align-items: center;
   gap: 6px;
   color: var(--vscode-foreground);
+  white-space: nowrap;
 }
 
 .footer-toggle > input {
