@@ -52,6 +52,11 @@ body {
   color: var(--vscode-foreground);
 }
 
+.chat-toolbar > .toolbar-tertiary {
+  background: color-mix(in srgb, var(--vscode-inputOption-activeBackground) 32%, var(--chat-surface-2));
+  color: var(--vscode-foreground);
+}
+
 .chat-tabs-window {
   display: flex;
   flex-direction: column;

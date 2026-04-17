@@ -40,6 +40,13 @@ export const ChatPanelView: React.FC<{
             New Chat
           </button>
           <button
+            className="toolbar-tertiary"
+            onClick={() => sendMessage({ type: "rebuildEmbedding" })}
+            title="Rebuild repository embedding index"
+          >
+            Rebuild Embedding
+          </button>
+          <button
             className="toolbar-secondary"
             onClick={() => setIsHistoryExpanded((current) => !current)}
           >
@@ -87,6 +94,13 @@ export const ChatPanelView: React.FC<{
           onClick={() => sendMessage({ type: "startChat" })}
         >
           New Chat
+        </button>
+        <button
+          className="toolbar-tertiary"
+          onClick={() => sendMessage({ type: "rebuildEmbedding" })}
+          title="Rebuild repository embedding index"
+        >
+          Rebuild Embedding
         </button>
         <button
           className="toolbar-secondary"

@@ -6,6 +6,9 @@ export const outgoingMessageSchema = zod.discriminatedUnion("type", [
     type: zod.literal("startChat"),
   }),
   zod.object({
+    type: zod.literal("rebuildEmbedding"),
+  }),
+  zod.object({
     type: zod.literal("enterOpenAIApiKey"),
   }),
   zod.object({

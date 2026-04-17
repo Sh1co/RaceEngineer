@@ -93,6 +93,10 @@ export class ChatController {
         await this.createConversation(this.basicChatTemplateId);
         break;
       }
+      case "rebuildEmbedding": {
+        await vscode.commands.executeCommand("raceengineer.indexRepository");
+        break;
+      }
       case "deleteConversation": {
         this.chatModel.deleteConversation(message.data.id);
         await this.updateChatPanel();
