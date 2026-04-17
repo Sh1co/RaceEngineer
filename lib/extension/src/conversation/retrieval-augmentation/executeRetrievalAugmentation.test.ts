@@ -96,6 +96,78 @@ describe("executeRetrievalAugmentation", () => {
     expect(chunks?.[0]?.content).toBe("return alpha");
   });
 
+  it("reindexes when embedding index file is missing, then retries and continues", async () => {
+    const fileNotFoundError = Object.assign(
+      new Error("ENOENT: no such file or directory"),
+      { code: "ENOENT" }
+    );
+
+    const readFileContentMock = vi
+      .spyOn(readFileContentModule, "readFileContent")
+      .mockImplementation(async () => "");
+    readFileContentMock
+      // first load: raceengineer-repository.json + repository.json both missing
+      .mockRejectedValueOnce(fileNotFoundError)
+      .mockRejectedValueOnce(fileNotFoundError)
+      // second load after reindex: now index exists
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          version: 0,
+          embedding: {
+            source: "ollama",
+            model: "nomic-embed-text",
+          },
+          chunks: [
+            {
+              file: "lib/extension/src/autocomplete/sanitizeAutoCompleteResponse.ts",
+              start_position: 1,
+              end_position: 20,
+              content: "const KNOWN_PLACEHOLDER_SNIPPETS = [\"obj['SUF']\"]",
+              embedding: [1, 0, 0],
+            },
+          ],
+        })
+      );
+
+    const reindexHandler = vi.fn().mockResolvedValue(undefined);
+    __setCommandHandler("raceengineer.indexRepository", reindexHandler);
+
+    const ai = {
+      getEmbeddingConfiguration() {
+        return { source: "ollama", model: "nomic-embed-text" };
+      },
+      async generateEmbedding() {
+        return {
+          type: "success" as const,
+          embedding: [1, 0, 0],
+          totalTokenCount: 1,
+        };
+      },
+    } as unknown as AIClient;
+
+    const chunks = await executeRetrievalAugmentation({
+      retrievalAugmentation: {
+        type: "similarity-search",
+        variableName: "context",
+        source: "embedding-file",
+        file: "raceengineer-repository.json",
+        query: "obj['SUF']",
+        threshold: 0,
+        maxResults: 3,
+      },
+      initVariables: {},
+      variables: {},
+      ai,
+    });
+
+    expect(reindexHandler).toHaveBeenCalledTimes(1);
+    expect(readFileContentMock).toHaveBeenCalledTimes(3);
+    expect(chunks?.length).toBe(1);
+    expect(chunks?.[0]?.file).toBe(
+      "lib/extension/src/autocomplete/sanitizeAutoCompleteResponse.ts"
+    );
+  });
+
   it("throws explicit error when index remains incompatible after reindex", async () => {
     const readFileContentMock = vi
       .spyOn(readFileContentModule, "readFileContent")

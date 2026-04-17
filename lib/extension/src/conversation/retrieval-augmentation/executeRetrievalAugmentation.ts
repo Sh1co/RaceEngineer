@@ -27,7 +27,17 @@ export async function executeRetrievalAugmentation({
   | undefined
 > {
   const embeddingConfig = ai.getEmbeddingConfiguration();
-  let embeddingFile = await loadEmbeddingFile(retrievalAugmentation.file);
+  let embeddingFile: EmbeddingFile;
+  try {
+    embeddingFile = await loadEmbeddingFile(retrievalAugmentation.file);
+  } catch (error) {
+    if (!isEmbeddingFileMissingError(error)) {
+      throw error;
+    }
+
+    await vscode.commands.executeCommand("raceengineer.indexRepository");
+    embeddingFile = await loadEmbeddingFile(retrievalAugmentation.file);
+  }
 
   if (!isEmbeddingConfigCompatible(embeddingFile.embedding, embeddingConfig)) {
     await vscode.commands.executeCommand("raceengineer.indexRepository");
@@ -82,6 +92,18 @@ export async function executeRetrievalAugmentation({
       endPosition: chunk.endPosition,
       content: chunk.content,
     }));
+}
+
+function isEmbeddingFileMissingError(error: unknown): boolean {
+  if (error == null || typeof error !== "object") {
+    return false;
+  }
+
+  const message = (error as { message?: unknown }).message;
+  return (
+    typeof message === "string" &&
+    message.includes("Embedding index file not found")
+  );
 }
 
 function getFileCandidates(file: string): string[] {
