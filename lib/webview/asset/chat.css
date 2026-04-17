@@ -52,11 +52,6 @@ body {
   color: var(--vscode-foreground);
 }
 
-.chat-toolbar > .toolbar-tertiary {
-  background: color-mix(in srgb, var(--vscode-inputOption-activeBackground) 32%, var(--chat-surface-2));
-  color: var(--vscode-foreground);
-}
-
 .chat-tabs-window {
   display: flex;
   flex-direction: column;
@@ -327,12 +322,42 @@ body {
   width: 100%;
   border-top: 1px solid var(--chat-border);
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
 }
 
 .action-panel {
   display: flex;
   gap: 8px;
+}
+
+.footer-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--vscode-foreground);
+}
+
+.footer-rebuild-button {
+  margin: 0;
+  border-radius: 999px;
+  border: 1px solid var(--chat-border);
+  background: color-mix(in srgb, var(--vscode-inputOption-activeBackground) 32%, var(--chat-surface-2));
+  color: var(--vscode-foreground);
+  width: auto;
+  padding: 4px 10px;
+}
+
+.footer-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--vscode-foreground);
+}
+
+.footer-toggle > input {
+  margin: 0;
 }
 
 .action-delete,

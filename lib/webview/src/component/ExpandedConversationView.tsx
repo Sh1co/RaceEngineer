@@ -11,6 +11,13 @@ export const ExpandedConversationView: React.FC<{
   onClickRetry: () => void;
   onClickDelete: () => void;
   onClickExport: () => void;
+  onClickRebuildEmbedding: () => void;
+  chatSettings: {
+    enableThinking: boolean;
+    enableWebSearch: boolean;
+  };
+  onToggleThinking: (value: boolean) => void;
+  onToggleWebSearch: (value: boolean) => void;
   onClickInsertPrompt?: () => void;
 }> = ({
   conversation,
@@ -19,6 +26,10 @@ export const ExpandedConversationView: React.FC<{
   onClickRetry,
   onClickDelete,
   onClickExport,
+  onClickRebuildEmbedding,
+  chatSettings,
+  onToggleThinking,
+  onToggleWebSearch,
   onClickInsertPrompt
 }) => {
   const content = conversation.content;
@@ -63,6 +74,34 @@ export const ExpandedConversationView: React.FC<{
       })()}
 
       <div className="footer">
+        <span className="footer-left">
+          <button
+            className="footer-rebuild-button"
+            onClick={onClickRebuildEmbedding}
+            title="Rebuild repository embedding index"
+          >
+            Rebuild Embedding
+          </button>
+
+          <label className="footer-toggle">
+            <input
+              type="checkbox"
+              checked={chatSettings.enableThinking}
+              onChange={(event) => onToggleThinking(event.target.checked)}
+            />
+            <span>Thinking</span>
+          </label>
+
+          <label className="footer-toggle">
+            <input
+              type="checkbox"
+              checked={chatSettings.enableWebSearch}
+              onChange={(event) => onToggleWebSearch(event.target.checked)}
+            />
+            <span>Web Search</span>
+          </label>
+        </span>
+
         <span className="action-panel">
           <i
             className="codicon codicon-save inline action-export"

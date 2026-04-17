@@ -97,6 +97,22 @@ export class ChatController {
         await vscode.commands.executeCommand("raceengineer.indexRepository");
         break;
       }
+      case "setChatSetting": {
+        const { key, value } = message.data;
+        const configuration = vscode.workspace.getConfiguration("raceengineer");
+        const settingKey =
+          key === "enableThinking"
+            ? "chat.enableThinking"
+            : "chat.enableWebSearch";
+
+        await configuration.update(
+          settingKey,
+          value,
+          vscode.ConfigurationTarget.Global
+        );
+        await this.updateChatPanel();
+        break;
+      }
       case "deleteConversation": {
         this.chatModel.deleteConversation(message.data.id);
         await this.updateChatPanel();

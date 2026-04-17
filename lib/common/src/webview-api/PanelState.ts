@@ -10,6 +10,10 @@ export const panelStateSchema = zod
       selectedConversationId: zod.union([zod.string(), zod.undefined()]),
       hasOpenAIApiKey: zod.boolean(),
       surfacePromptForOpenAIPlus: zod.boolean(),
+      settings: zod.object({
+        enableThinking: zod.boolean(),
+        enableWebSearch: zod.boolean(),
+      }),
       error: errorSchema.optional(),
     }),
     zod.object({

@@ -9,6 +9,14 @@ function getConfigSurfacePromptForOpenAIPlus(): boolean {
   return false;
 }
 
+function getChatSettings() {
+  const configuration = vscode.workspace.getConfiguration("raceengineer");
+  return {
+    enableThinking: configuration.get("chat.enableThinking", false),
+    enableWebSearch: configuration.get("chat.enableWebSearch", false),
+  };
+}
+
 export class ChatPanel implements vscode.WebviewViewProvider {
   public static readonly id = "raceengineer.chat";
 
@@ -49,6 +57,7 @@ export class ChatPanel implements vscode.WebviewViewProvider {
       conversations: [],
       hasOpenAIApiKey,
       surfacePromptForOpenAIPlus,
+      settings: getChatSettings(),
     };
 
     this.apiKeyManager.onUpdate(async () => {
@@ -117,6 +126,7 @@ export class ChatPanel implements vscode.WebviewViewProvider {
       conversations,
       hasOpenAIApiKey,
       surfacePromptForOpenAIPlus,
+      settings: getChatSettings(),
     };
     return this.renderPanel();
   }

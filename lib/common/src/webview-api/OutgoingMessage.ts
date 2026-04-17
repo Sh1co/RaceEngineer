@@ -9,6 +9,13 @@ export const outgoingMessageSchema = zod.discriminatedUnion("type", [
     type: zod.literal("rebuildEmbedding"),
   }),
   zod.object({
+    type: zod.literal("setChatSetting"),
+    data: zod.object({
+      key: zod.enum(["enableThinking", "enableWebSearch"]),
+      value: zod.boolean(),
+    }),
+  }),
+  zod.object({
     type: zod.literal("enterOpenAIApiKey"),
   }),
   zod.object({

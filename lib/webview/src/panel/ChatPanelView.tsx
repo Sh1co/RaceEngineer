@@ -40,13 +40,6 @@ export const ChatPanelView: React.FC<{
             New Chat
           </button>
           <button
-            className="toolbar-tertiary"
-            onClick={() => sendMessage({ type: "rebuildEmbedding" })}
-            title="Rebuild repository embedding index"
-          >
-            Rebuild Embedding
-          </button>
-          <button
             className="toolbar-secondary"
             onClick={() => setIsHistoryExpanded((current) => !current)}
           >
@@ -55,12 +48,12 @@ export const ChatPanelView: React.FC<{
                 isHistoryExpanded ? "codicon-chevron-down" : "codicon-chevron-right"
               }`}
             />{" "}
-            Tabs
+            History
           </button>
         </div>
         <div className="chat-empty-state">
           <h3>RaceEngineer Chat</h3>
-          <p>Start first conversation. Tabs panel collapsed by default.</p>
+          <p>Start first conversation. History panel collapsed by default.</p>
           <StartChatButton onClick={() => sendMessage({ type: "startChat" })} />
         </div>
       </div>
@@ -96,13 +89,6 @@ export const ChatPanelView: React.FC<{
           New Chat
         </button>
         <button
-          className="toolbar-tertiary"
-          onClick={() => sendMessage({ type: "rebuildEmbedding" })}
-          title="Rebuild repository embedding index"
-        >
-          Rebuild Embedding
-        </button>
-        <button
           className="toolbar-secondary"
           onClick={() => setIsHistoryExpanded((current) => !current)}
         >
@@ -111,7 +97,7 @@ export const ChatPanelView: React.FC<{
               isHistoryExpanded ? "codicon-chevron-down" : "codicon-chevron-right"
             }`}
           />{" "}
-          Tabs
+          History
         </button>
       </div>
 
@@ -162,6 +148,24 @@ export const ChatPanelView: React.FC<{
             sendMessage({
               type: "deleteConversation",
               data: { id: selectedConversation.id },
+            })
+          }
+          onClickRebuildEmbedding={() =>
+            sendMessage({
+              type: "rebuildEmbedding",
+            })
+          }
+          chatSettings={panelState.settings}
+          onToggleThinking={(value) =>
+            sendMessage({
+              type: "setChatSetting",
+              data: { key: "enableThinking", value },
+            })
+          }
+          onToggleWebSearch={(value) =>
+            sendMessage({
+              type: "setChatSetting",
+              data: { key: "enableWebSearch", value },
             })
           }
           onClickExport={() => {
