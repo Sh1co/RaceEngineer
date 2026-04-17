@@ -28,6 +28,12 @@ describe("Conversation edit flow", () => {
     );
 
     const ai = {
+      isWebSearchEnabled() {
+        return false;
+      },
+      async searchWeb() {
+        return [];
+      },
       streamText,
     } as unknown as AIClient;
 

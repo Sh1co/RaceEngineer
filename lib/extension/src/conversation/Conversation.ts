@@ -203,8 +203,16 @@ export class Conversation {
           });
       }
 
+      const promptWithVariables = await this.evaluateTemplate(
+        prompt.template,
+        variables
+      );
+      const promptWithWebSearch = await this.appendWebSearchContext(
+        promptWithVariables
+      );
+
       const stream = await this.ai.streamText({
-        prompt: await this.evaluateTemplate(prompt.template, variables),
+        prompt: promptWithWebSearch,
         maxTokens: prompt.maxTokens,
         stop: prompt.stop,
         temperature: prompt.temperature,
@@ -325,6 +333,61 @@ export class Conversation {
     const collapsedWhitespace = withoutQuotes.replace(/\s+/g, " ").trim();
 
     return collapsedWhitespace.slice(0, 80);
+  }
+
+  private async appendWebSearchContext(basePrompt: string): Promise<string> {
+    if (!this.ai.isWebSearchEnabled()) {
+      return basePrompt;
+    }
+
+    const latestUserMessage = this.getLatestUserMessage();
+    if (latestUserMessage == null || latestUserMessage.trim().length === 0) {
+      return basePrompt;
+    }
+
+    try {
+      const webResults = await this.ai.searchWeb({
+        query: latestUserMessage,
+        maxResults: 5,
+      });
+
+      if (webResults.length === 0) {
+        return basePrompt;
+      }
+
+      const formattedResults = webResults
+        .map(
+          (result, index) =>
+            `${index + 1}. ${result.title}\nURL: ${result.url}\nSnippet: ${
+              result.snippet
+            }`
+        )
+        .join("\n\n");
+
+      return [
+        basePrompt,
+        "",
+        "## Web Search Results",
+        "Use these current web results if relevant. If you use them, cite URLs directly.",
+        formattedResults,
+      ].join("\n");
+    } catch (error) {
+      this.logger.debug(
+        `Web search unavailable: ${(error as Error)?.message ?? error}`
+      );
+      return basePrompt;
+    }
+  }
+
+  private getLatestUserMessage(): string | undefined {
+    for (let i = this.messages.length - 1; i >= 0; i--) {
+      const message = this.messages[i];
+      if (message?.author === "user") {
+        return message.content;
+      }
+    }
+
+    return undefined;
   }
 
   private async handlePartialCompletion(

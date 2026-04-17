@@ -43,6 +43,25 @@ type EmbeddingConfiguration = {
   model: string;
 };
 
+export type WebSearchResult = {
+  title: string;
+  url: string;
+  snippet: string;
+};
+
+type DuckDuckGoTopic = {
+  Text?: unknown;
+  FirstURL?: unknown;
+  Topics?: unknown;
+};
+
+type DuckDuckGoInstantAnswerResponse = {
+  AbstractText?: unknown;
+  AbstractURL?: unknown;
+  Heading?: unknown;
+  RelatedTopics?: unknown;
+};
+
 const KNOWN_PLACEHOLDER_RESPONSE_PATTERNS = [
   /^["'`]?obj\[\s*["'](?:middle_code|SUF|PRE|MID|prefix|suffix|fim_prefix|fim_suffix|fim_middle)["']\s*\]["'`]?;?$/i,
 ];
@@ -152,6 +171,12 @@ function getChatEnableThinking(): boolean {
     .get("chat.enableThinking", false);
 }
 
+function getChatEnableWebSearch(): boolean {
+  return vscode.workspace
+    .getConfiguration("raceengineer")
+    .get("chat.enableWebSearch", false);
+}
+
 function isQwenChatModel(model: string): boolean {
   const normalizedModel = model.trim().toLowerCase();
   return (
@@ -206,6 +231,67 @@ export class AIClient {
 
   public shouldUseNativeOllamaQwenChat(): boolean {
     return this.getProvider() === "Ollama" && isQwenChatModel(this.getModel());
+  }
+
+  public isWebSearchEnabled(): boolean {
+    return getChatEnableWebSearch();
+  }
+
+  public async searchWeb({
+    query,
+    maxResults = 5,
+  }: {
+    query: string;
+    maxResults?: number;
+  }): Promise<WebSearchResult[]> {
+    const response = await fetch(
+      `https://api.duckduckgo.com/?q=${encodeURIComponent(
+        query
+      )}&format=json&no_html=1&skip_disambig=1`,
+      {
+        method: "GET",
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Web search failed with status ${response.status}.`);
+    }
+
+    const data = (await response.json()) as DuckDuckGoInstantAnswerResponse;
+    const results: WebSearchResult[] = [];
+
+    if (
+      typeof data.AbstractURL === "string" &&
+      typeof data.AbstractText === "string" &&
+      data.AbstractURL.trim().length > 0 &&
+      data.AbstractText.trim().length > 0
+    ) {
+      results.push({
+        title:
+          typeof data.Heading === "string" && data.Heading.trim().length > 0
+            ? data.Heading.trim()
+            : data.AbstractURL,
+        url: data.AbstractURL,
+        snippet: data.AbstractText.trim(),
+      });
+    }
+
+    this.collectDuckDuckGoTopics(data.RelatedTopics, results);
+
+    const uniqueResults: WebSearchResult[] = [];
+    const seenUrls = new Set<string>();
+    for (const result of results) {
+      if (seenUrls.has(result.url)) {
+        continue;
+      }
+      seenUrls.add(result.url);
+      uniqueResults.push(result);
+      if (uniqueResults.length >= maxResults) {
+        break;
+      }
+    }
+
+    return uniqueResults;
   }
 
   private async getProviderApiConfiguration() {
@@ -295,7 +381,11 @@ export class AIClient {
   }) {
     this.logger.log(["--- Start prompt ---", prompt, "--- End prompt ---"]);
 
-    if (this.shouldUseNativeOllamaQwenChat()) {
+    const shouldUseNativeOllamaChat =
+      this.getProvider() === "Ollama" &&
+      (this.shouldUseNativeOllamaQwenChat() || getChatEnableThinking());
+
+    if (shouldUseNativeOllamaChat) {
       const response = await fetch(`${getProviderBaseUrl()}/api/chat`, {
         method: "POST",
         headers: {
@@ -559,5 +649,29 @@ export class AIClient {
     return typeof parsed.message?.content === "string"
       ? parsed.message.content
       : "";
+  }
+
+  private collectDuckDuckGoTopics(raw: unknown, output: WebSearchResult[]) {
+    if (!Array.isArray(raw)) {
+      return;
+    }
+
+    for (const entry of raw) {
+      const topic = entry as DuckDuckGoTopic;
+      if (
+        typeof topic.FirstURL === "string" &&
+        typeof topic.Text === "string" &&
+        topic.FirstURL.trim().length > 0 &&
+        topic.Text.trim().length > 0
+      ) {
+        output.push({
+          title: topic.Text.split(" - ")[0]?.trim() || topic.FirstURL,
+          url: topic.FirstURL,
+          snippet: topic.Text.trim(),
+        });
+      }
+
+      this.collectDuckDuckGoTopics(topic.Topics, output);
+    }
   }
 }

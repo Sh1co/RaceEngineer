@@ -104,6 +104,12 @@ describe("chat-en template repo context integration", () => {
       getEmbeddingConfiguration() {
         return { source: "ollama", model: "nomic-embed-text" };
       },
+      isWebSearchEnabled() {
+        return false;
+      },
+      async searchWeb() {
+        return [];
+      },
       generateEmbedding,
       streamText,
     } as unknown as AIClient;
@@ -224,6 +230,12 @@ describe("chat-en template repo context integration", () => {
       getEmbeddingConfiguration() {
         return { source: "ollama", model: "nomic-embed-text" };
       },
+      isWebSearchEnabled() {
+        return false;
+      },
+      async searchWeb() {
+        return [];
+      },
       generateEmbedding,
       streamText,
     } as unknown as AIClient;
@@ -281,5 +293,88 @@ describe("chat-en template repo context integration", () => {
     expect(webviewConversation.header.title).toBe(
       "Placeholder sanitization lookup"
     );
+  });
+
+  it("injects web search results into prompt when web search toggle is enabled", async () => {
+    __setWorkspaceFolder("C:\\mock-repo");
+    __setVSCodeConfig("raceengineer", "chat.enableWebSearch", true);
+
+    vi.spyOn(readFileContentModule, "readFileContent").mockResolvedValue(
+      JSON.stringify({
+        version: 0,
+        embedding: {
+          source: "ollama",
+          model: "nomic-embed-text",
+        },
+        chunks: [],
+      })
+    );
+
+    const generateEmbedding = vi.fn().mockResolvedValue({
+      type: "success" as const,
+      embedding: [1, 0, 0],
+      totalTokenCount: 5,
+    });
+
+    const searchWeb = vi.fn().mockResolvedValue([
+      {
+        title: "Telemetry basics",
+        url: "https://example.com/telemetry",
+        snippet: "Telemetry in motorsport overview.",
+      },
+    ]);
+
+    const streamText = vi.fn().mockImplementation(async ({ prompt }) => {
+      return (async function* () {
+        if (prompt.includes("Create a very short chat title")) {
+          yield "Telemetry question";
+          return;
+        }
+        yield "Using web context.";
+      })();
+    });
+
+    const ai = {
+      getEmbeddingConfiguration() {
+        return { source: "ollama", model: "nomic-embed-text" };
+      },
+      isWebSearchEnabled() {
+        return true;
+      },
+      searchWeb,
+      generateEmbedding,
+      streamText,
+    } as unknown as AIClient;
+
+    const templateMarkdown = await loadChatTemplateMarkdown();
+    const template = parseRubberduckTemplateOrThrow(templateMarkdown);
+
+    const conversation = new Conversation({
+      id: "conversation-3",
+      ai,
+      template,
+      initVariables: {
+        openFiles: [],
+        selectedText: "",
+      },
+      updateChatPanel: async () => {},
+      diffEditorManager: {
+        createDiffEditor: vi.fn(),
+      } as any,
+      diffData: undefined,
+      logger: loggerMock,
+    });
+
+    await conversation.answer("Explain current telemetry best practices.");
+
+    expect(searchWeb).toHaveBeenCalledTimes(1);
+    expect(searchWeb).toHaveBeenCalledWith({
+      query: "Explain current telemetry best practices.",
+      maxResults: 5,
+    });
+
+    const prompt = streamText.mock.calls[0]?.[0]?.prompt as string;
+    expect(prompt).toContain("## Web Search Results");
+    expect(prompt).toContain("https://example.com/telemetry");
   });
 });
