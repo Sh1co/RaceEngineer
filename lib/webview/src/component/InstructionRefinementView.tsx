@@ -1,4 +1,4 @@
-import { webviewApi } from "@privy/common";
+import { webviewApi } from "@raceengineer/common";
 import React, { useState } from "react";
 import { ChatInput } from "./ChatInput";
 import { ErrorMessage } from "./ErrorMessage";

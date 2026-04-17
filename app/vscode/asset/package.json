@@ -1,8 +1,8 @@
 {
-  "publisher": "Privy",
-  "name": "privy-vscode",
+  "publisher": "RaceEngineer",
+  "name": "raceengineer",
   "version": "0.2.8",
-  "displayName": "Privy - AI coding Autocomplete and chat that runs locally. ",
+  "displayName": "RaceEngineer - AI coding Autocomplete and chat that runs locally. ",
   "description": "Get code suggestions, chat with code, explain code, generate tests, find bugs, etc.",
   "keywords": [
     "ai",
@@ -38,9 +38,9 @@
     "node": ">=18",
     "vscode": "^1.72.0"
   },
-  "homepage": "https://github.com/srikanth235/privy",
-  "repository": "https://github.com/srikanth235/privy",
-  "bugs": "https://github.com/srikanth235/privy/issues",
+  "homepage": "https://github.com/Sh1co/RaceEngineer",
+  "repository": "https://github.com/Sh1co/RaceEngineer",
+  "bugs": "https://github.com/Sh1co/RaceEngineer/issues",
   "extensionKind": [
     "workspace"
   ],
@@ -51,81 +51,81 @@
   "contributes": {
     "commands": [
       {
-        "command": "privy.startChat",
+        "command": "raceengineer.startChat",
         "title": "Start Chat 💬",
-        "category": "Privy",
+        "category": "RaceEngineer",
         "icon": "$(comment-discussion)"
       },
       {
-        "command": "privy.explainCode",
+        "command": "raceengineer.explainCode",
         "title": "Explain Code",
-        "category": "Privy",
+        "category": "RaceEngineer",
         "icon": "$(comment-discussion)"
       },
       {
-        "command": "privy.generateCode",
+        "command": "raceengineer.generateCode",
         "title": "Generate Code 🪄",
-        "category": "Privy",
+        "category": "RaceEngineer",
         "icon": "$(wand)"
       },
       {
-        "command": "privy.generateUnitTest",
+        "command": "raceengineer.generateUnitTest",
         "title": "Generate Unit Test 🪄",
-        "category": "Privy",
+        "category": "RaceEngineer",
         "icon": "$(beaker)"
       },
       {
-        "command": "privy.diagnoseErrors",
+        "command": "raceengineer.diagnoseErrors",
         "title": "Diagnose Errors",
-        "category": "Privy",
+        "category": "RaceEngineer",
         "icon": "$(search-fuzzy)"
       },
       {
-        "command": "privy.findBugs",
+        "command": "raceengineer.findBugs",
         "title": "Find Bugs",
-        "category": "Privy",
+        "category": "RaceEngineer",
         "icon": "$(bug)"
       },
       {
-        "command": "privy.touchBar.startChat",
-        "category": "Privy",
+        "command": "raceengineer.touchBar.startChat",
+        "category": "RaceEngineer",
         "title": "💬"
       },
       {
-        "command": "privy.showChatPanel",
+        "command": "raceengineer.showChatPanel",
         "title": "Show Chat Panel 💬",
-        "category": "Privy",
+        "category": "RaceEngineer",
         "icon": "$(comment-discussion)"
       },
       {
-        "command": "privy.getStarted",
+        "command": "raceengineer.getStarted",
         "title": "Get Started",
-        "category": "Privy",
+        "category": "RaceEngineer",
         "icon": "$(question)"
       },
       {
-        "command": "privy.openSettings",
+        "command": "raceengineer.openSettings",
         "title": "Open Settings",
-        "category": "Privy",
+        "category": "RaceEngineer",
         "icon": "$(settings)"
       },
       {
-        "command": "privy.reloadTemplates",
+        "command": "raceengineer.reloadTemplates",
         "title": "Reload Templates",
-        "category": "Privy",
+        "category": "RaceEngineer",
         "icon": "$(sync)"
       },
       {
-        "command": "privy.showLogs",
+        "command": "raceengineer.showLogs",
         "title": "Show Logs",
-        "category": "Privy",
+        "category": "RaceEngineer",
         "icon": "$(output)"
       }
     ],
     "configuration": {
-      "title": "Privy",
+      "title": "RaceEngineer",
       "properties": {
-        "privy.logger.level": {
+        "raceengineer.logger.level": {
           "type": "string",
           "default": "info",
           "enum": [
@@ -140,11 +140,11 @@
             "Only show warnings and errors",
             "Only show errors"
           ],
-          "markdownDescription": "Specify the verbosity of logs that will appear in 'Privy: Show Logs'.",
+          "markdownDescription": "Specify the verbosity of logs that will appear in 'RaceEngineer: Show Logs'.",
           "scope": "application",
           "order": 1
         },
-        "privy.provider": {
+        "raceengineer.provider": {
           "type": "string",
           "default": "Ollama",
           "enum": [
@@ -159,14 +159,14 @@
           ],
           "order": 2
         },
-        "privy.providerBaseUrl": {
+        "raceengineer.providerBaseUrl": {
           "type": "string",
           "default": "http://localhost:11434/",
           "markdownDescription": "Specify the URL to the provider.",
           "scope": "application",
           "order": 3
         },
-        "privy.autocomplete.mode": {
+        "raceengineer.autocomplete.mode": {
           "type": "string",
           "default": "automatic",
           "enum": [
@@ -181,19 +181,19 @@
           ],
           "order": 4
         },
-        "privy.autocomplete.model": {
+        "raceengineer.autocomplete.model": {
           "type": "string",
           "default": "deepseek-coder:1.3b-base",
           "markdownDescription": "Enter the name of Ollama model to use for autocomplete.",
           "order": 5
         },
-        "privy.autocomplete.debounceWait": {
+        "raceengineer.autocomplete.debounceWait": {
           "type": "number",
           "default": 300,
           "markdownDescription": "The time gap before triggering the next completion in milliseconds",
           "order": 6
         },
-        "privy.model": {
+        "raceengineer.model": {
           "type": "string",
           "default": "mistral:instruct",
           "enum": [
@@ -210,34 +210,34 @@
           "scope": "application",
           "order": 7
         },
-        "privy.customModel": {
+        "raceengineer.customModel": {
           "type": "string",
           "default": "",
           "markdownDescription": "Enter the name of Ollama model to use. Only applies if you selected 'custom' above.",
           "order": 8
         },
-        "privy.chat.enableThinking": {
+        "raceengineer.chat.enableThinking": {
           "type": "boolean",
           "default": false,
           "markdownDescription": "Enable model reasoning/thinking output generation when supported by the chat model/provider.",
           "scope": "application",
           "order": 9
         },
-        "privy.embedding.model": {
+        "raceengineer.embedding.model": {
           "type": "string",
           "default": "nomic-embed-text",
           "markdownDescription": "Enter the name of Ollama model to use for repository/query embeddings.",
           "scope": "application",
           "order": 10
         },
-        "privy.syntaxHighlighting.useVisualStudioCodeColors": {
+        "raceengineer.syntaxHighlighting.useVisualStudioCodeColors": {
           "type": "boolean",
           "default": false,
           "markdownDescription": "Use the Visual Studio Code Theme colors for syntax highlighting in the diff viewer. Might not work with all themes. Only applies to newly opened diffs.",
           "scope": "application",
           "order": 11
         },
-        "privy.indexRepository.enabled": {
+        "raceengineer.indexRepository.enabled": {
           "type": "boolean",
           "default": false,
           "markdownDescription": "Enable the command to index your repository and give more context to the AI model. Experimental.",
@@ -250,112 +250,112 @@
       {
         "key": "cmd+\\",
         "command": "editor.action.inlineSuggest.trigger",
-        "when": "config.privy.autocomplete.mode === 'manual' && editorTextFocus && !editorHasSelection && !inlineSuggestionsVisible && isMac"
+        "when": "config.raceengineer.autocomplete.mode === 'manual' && editorTextFocus && !editorHasSelection && !inlineSuggestionsVisible && isMac"
       },
       {
         "key": "alt+\\",
         "command": "editor.action.inlineSuggest.trigger",
-        "when": "config.privy.autocomplete.mode === 'manual' && editorTextFocus && !editorHasSelection && !inlineSuggestionsVisible && !isMac"
+        "when": "config.raceengineer.autocomplete.mode === 'manual' && editorTextFocus && !editorHasSelection && !inlineSuggestionsVisible && !isMac"
       },
       {
-        "command": "privy.startChat",
+        "command": "raceengineer.startChat",
         "when": "isMac",
         "key": "Ctrl+Cmd+c"
       },
       {
-        "command": "privy.startChat",
+        "command": "raceengineer.startChat",
         "when": "!isMac",
         "key": "Ctrl+Alt+c"
       },
       {
-        "command": "privy.generateCode",
+        "command": "raceengineer.generateCode",
         "when": "isMac",
         "key": "Ctrl+Cmd+g"
       },
       {
-        "command": "privy.generateCode",
+        "command": "raceengineer.generateCode",
         "when": "!isMac",
         "key": "Ctrl+Alt+g"
       }
     ],
     "submenus": [
       {
-        "label": "Privy",
-        "id": "privy.submenu"
+        "label": "RaceEngineer",
+        "id": "raceengineer.submenu"
       }
     ],
     "menus": {
       "view/title": [
         {
-          "command": "privy.startChat",
-          "when": "view == privy.chat",
+          "command": "raceengineer.startChat",
+          "when": "view == raceengineer.chat",
           "group": "navigation@1"
         },
         {
-          "command": "privy.openSettings",
-          "when": "view == privy.chat",
+          "command": "raceengineer.openSettings",
+          "when": "view == raceengineer.chat",
           "group": "navigation@2"
         },
         {
-          "command": "privy.getStarted",
-          "when": "view == privy.chat",
+          "command": "raceengineer.getStarted",
+          "when": "view == raceengineer.chat",
           "group": "navigation@3"
         }
       ],
       "touchBar": [
         {
-          "command": "privy.touchBar.startChat",
-          "group": "privy"
+          "command": "raceengineer.touchBar.startChat",
+          "group": "raceengineer"
         }
       ],
       "commandPalette": [
         {
-          "command": "privy.touchBar.startChat",
+          "command": "raceengineer.touchBar.startChat",
           "when": "false"
         }
       ],
       "editor/context": [
         {
-          "submenu": "privy.submenu",
-          "group": "0_privy"
+          "submenu": "raceengineer.submenu",
+          "group": "0_raceengineer"
         }
       ],
-      "privy.submenu": [
+      "raceengineer.submenu": [
         {
-          "command": "privy.startChat",
-          "group": "privy"
+          "command": "raceengineer.startChat",
+          "group": "raceengineer"
         },
         {
-          "command": "privy.explainCode",
-          "group": "privy"
+          "command": "raceengineer.explainCode",
+          "group": "raceengineer"
         },
         {
-          "command": "privy.findBugs",
-          "group": "privy"
+          "command": "raceengineer.findBugs",
+          "group": "raceengineer"
         },
         {
-          "command": "privy.generateUnitTest",
-          "group": "privy"
+          "command": "raceengineer.generateUnitTest",
+          "group": "raceengineer"
         },
         {
-          "command": "privy.diagnoseErrors",
-          "group": "privy"
+          "command": "raceengineer.diagnoseErrors",
+          "group": "raceengineer"
         }
       ]
     },
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "privy",
-          "title": "Privy",
-          "icon": "media/sidebar-icon.svg"
+          "id": "raceengineer",
+          "title": "RaceEngineer",
+          "icon": "media/sidebar-icon.png"
         }
       ]
     },
     "views": {
-      "privy": [
+      "raceengineer": [
         {
-          "id": "privy.chat",
+          "id": "raceengineer.chat",
           "name": "Chat",
           "type": "webview"
         }
@@ -363,13 +363,13 @@
     },
     "walkthroughs": [
       {
-        "id": "privy",
-        "title": "Privy",
+        "id": "raceengineer",
+        "title": "RaceEngineer",
         "description": "Your AI Chat Assistant in Visual Studio Code",
         "steps": [
           {
             "id": "setup",
-            "title": "Setup Privy",
+            "title": "Setup RaceEngineer",
             "description": "Ensure LLM is running locally before getting started.",
             "media": {
               "markdown": "walkthrough/setup.md"
@@ -386,7 +386,7 @@
           {
             "id": "chat",
             "title": "AI Chat",
-            "description": "Chat with Privy about your code and software development topics.",
+            "description": "Chat with RaceEngineer about your code and software development topics.",
             "media": {
               "markdown": "walkthrough/chat.md"
             }
@@ -394,7 +394,7 @@
           {
             "id": "explain-code",
             "title": "Explain Code",
-            "description": "Chat with Privy about your code and software development topics.",
+            "description": "Chat with RaceEngineer about your code and software development topics.",
             "media": {
               "markdown": "walkthrough/explain-code.md"
             }
@@ -402,7 +402,7 @@
           {
             "id": "generate-unit-test",
             "title": "Generate Unit Test",
-            "description": "Chat with Privy about your code and software development topics.",
+            "description": "Chat with RaceEngineer about your code and software development topics.",
             "media": {
               "markdown": "walkthrough/generate-unit-test.md"
             }
@@ -410,7 +410,7 @@
           {
             "id": "find-bugs",
             "title": "Find Bugs",
-            "description": "Chat with Privy about your code and software development topics.",
+            "description": "Chat with RaceEngineer about your code and software development topics.",
             "media": {
               "markdown": "walkthrough/find-bugs.md"
             }
@@ -418,7 +418,7 @@
           {
             "id": "diagnose-errors",
             "title": "Diagnose Errors",
-            "description": "Chat with Privy about your code and software development topics.",
+            "description": "Chat with RaceEngineer about your code and software development topics.",
             "media": {
               "markdown": "walkthrough/diagnose-errors.md"
             }
@@ -426,7 +426,7 @@
           {
             "id": "tips-and-tricks",
             "title": "Tips and Tricks",
-            "description": "How to get the most out of Privy.",
+            "description": "How to get the most out of RaceEngineer.",
             "media": {
               "markdown": "walkthrough/tips-and-tricks.md"
             }

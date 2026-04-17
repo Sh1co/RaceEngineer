@@ -1,5 +1,5 @@
 {
-  "name": "@privy/common",
+  "name": "@raceengineer/common",
   "version": "0.0.0",
   "private": true,
   "main": "build/index.js",

@@ -30,7 +30,7 @@ export async function executeRetrievalAugmentation({
   let embeddingFile = await loadEmbeddingFile(retrievalAugmentation.file);
 
   if (!isEmbeddingConfigCompatible(embeddingFile.embedding, embeddingConfig)) {
-    await vscode.commands.executeCommand("privy.indexRepository");
+    await vscode.commands.executeCommand("raceengineer.indexRepository");
     embeddingFile = await loadEmbeddingFile(retrievalAugmentation.file);
 
     if (!isEmbeddingConfigCompatible(embeddingFile.embedding, embeddingConfig)) {
@@ -85,8 +85,8 @@ export async function executeRetrievalAugmentation({
 }
 
 function getFileCandidates(file: string): string[] {
-  if (file === "repository.json" || file === "privy-repository.json") {
-    return ["privy-repository.json", "repository.json"];
+  if (file === "repository.json" || file === "raceengineer-repository.json") {
+    return ["raceengineer-repository.json", "repository.json"];
   }
   return [file];
 }
@@ -100,7 +100,7 @@ async function loadEmbeddingFile(file: string): Promise<EmbeddingFile> {
   for (const candidate of candidates) {
     const fileUri = vscode.Uri.joinPath(
       workspaceRoot,
-      ".privy/embedding",
+      ".raceengineer/embedding",
       candidate
     );
 
@@ -119,7 +119,7 @@ async function loadEmbeddingFile(file: string): Promise<EmbeddingFile> {
   }
 
   throw new Error(
-    `Embedding index file not found for '${file}' in .privy/embedding. Last error: ${
+    `Embedding index file not found for '${file}' in .raceengineer/embedding. Last error: ${
       (lastError as Error | undefined)?.message ?? "unknown"
     }`
   );

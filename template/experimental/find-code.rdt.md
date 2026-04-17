@@ -9,7 +9,7 @@
   "id": "find-code",
   "engineVersion": 0,
   "label": "Find code",
-  "description": "Find code in the Privy codebase.",
+  "description": "Find code in the RaceEngineer codebase.",
   "header": {
     "title": "Find code",
     "useFirstMessageAsTitle": true,
@@ -33,7 +33,7 @@
       "variableName": "searchResults",
       "query": "{{lastMessage}}",
       "source": "embedding-file",
-      "file": "privy-repository.json",
+      "file": "raceengineer-repository.json",
       "threshold": 0.7,
       "maxResults": 5
     },

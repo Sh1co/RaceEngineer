@@ -12,7 +12,7 @@ import * as readFileContentModule from "../../vscode/readFileContent";
 describe("executeRetrievalAugmentation", () => {
   beforeEach(() => {
     __resetVSCodeConfig();
-    __setVSCodeConfig("privy", "provider", "Ollama");
+    __setVSCodeConfig("raceengineer", "provider", "Ollama");
     __setWorkspaceFolder("C:\\repo");
     vi.clearAllMocks();
   });
@@ -60,7 +60,7 @@ describe("executeRetrievalAugmentation", () => {
       );
 
     const reindexHandler = vi.fn().mockResolvedValue(undefined);
-    __setCommandHandler("privy.indexRepository", reindexHandler);
+    __setCommandHandler("raceengineer.indexRepository", reindexHandler);
 
     const ai = {
       getEmbeddingConfiguration() {
@@ -80,7 +80,7 @@ describe("executeRetrievalAugmentation", () => {
         type: "similarity-search",
         variableName: "context",
         source: "embedding-file",
-        file: "privy-repository.json",
+        file: "raceengineer-repository.json",
         query: "alpha",
         threshold: 0,
         maxResults: 3,
@@ -122,7 +122,7 @@ describe("executeRetrievalAugmentation", () => {
         })
       );
 
-    __setCommandHandler("privy.indexRepository", vi.fn().mockResolvedValue(undefined));
+    __setCommandHandler("raceengineer.indexRepository", vi.fn().mockResolvedValue(undefined));
 
     const ai = {
       getEmbeddingConfiguration() {

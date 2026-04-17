@@ -54,12 +54,12 @@ async function collectStreamText(stream: AsyncIterable<string>) {
 describe("AIClient chat/embedding integration", () => {
   beforeEach(() => {
     __resetVSCodeConfig();
-    __setVSCodeConfig("privy", "provider", "Ollama");
-    __setVSCodeConfig("privy", "providerBaseUrl", "http://localhost:11434");
-    __setVSCodeConfig("privy", "model", "custom");
-    __setVSCodeConfig("privy", "customModel", "qwen3.5:9b");
-    __setVSCodeConfig("privy", "chat.enableThinking", false);
-    __setVSCodeConfig("privy.embedding", "model", "nomic-embed-text");
+    __setVSCodeConfig("raceengineer", "provider", "Ollama");
+    __setVSCodeConfig("raceengineer", "providerBaseUrl", "http://localhost:11434");
+    __setVSCodeConfig("raceengineer", "model", "custom");
+    __setVSCodeConfig("raceengineer", "customModel", "qwen3.5:9b");
+    __setVSCodeConfig("raceengineer", "chat.enableThinking", false);
+    __setVSCodeConfig("raceengineer.embedding", "model", "nomic-embed-text");
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
@@ -99,7 +99,7 @@ describe("AIClient chat/embedding integration", () => {
   });
 
   it("passes thinking toggle when enabled", async () => {
-    __setVSCodeConfig("privy", "chat.enableThinking", true);
+    __setVSCodeConfig("raceengineer", "chat.enableThinking", true);
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       body: streamFromLines([JSON.stringify({ done: true })]),
@@ -118,7 +118,7 @@ describe("AIClient chat/embedding integration", () => {
   });
 
   it("keeps legacy chat branch disabled for non-qwen models", async () => {
-    __setVSCodeConfig("privy", "model", "mistral:instruct");
+    __setVSCodeConfig("raceengineer", "model", "mistral:instruct");
 
     const ai = createClient();
     expect(ai.shouldUseNativeOllamaQwenChat()).toBe(false);
@@ -157,7 +157,7 @@ describe("AIClient chat/embedding integration", () => {
   });
 
   it("throws clear error when embedding requested on non-Ollama provider", async () => {
-    __setVSCodeConfig("privy", "provider", "llama.cpp");
+    __setVSCodeConfig("raceengineer", "provider", "llama.cpp");
     const ai = createClient();
 
     await expect(
@@ -165,7 +165,7 @@ describe("AIClient chat/embedding integration", () => {
         input: "x",
       })
     ).rejects.toThrow(
-      "Embedding generation requires privy.provider to be set to Ollama."
+      "Embedding generation requires raceengineer.provider to be set to Ollama."
     );
   });
 });

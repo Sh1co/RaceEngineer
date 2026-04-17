@@ -1,6 +1,6 @@
 # AI Chat in French
 
-This template lets you chat with Privy in French.
+This template lets you chat with RaceEngineer in French.
 
 ## Template
 
@@ -11,7 +11,7 @@ This template lets you chat with Privy in French.
   "id": "chat-fr",
   "engineVersion": 0,
   "label": "Commencer une discussion",
-  "description": "Commencer une discussion avec Privy.",
+  "description": "Commencer une discussion avec RaceEngineer.",
   "header": {
     "title": "Nouvelle discussion",
     "useFirstMessageAsTitle": true,

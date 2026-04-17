@@ -35,10 +35,10 @@ function createClient() {
 describe("AIClient.generateInfillText", () => {
   beforeEach(() => {
     __resetVSCodeConfig();
-    __setVSCodeConfig("privy", "provider", "Ollama");
-    __setVSCodeConfig("privy", "providerBaseUrl", "http://localhost:11434");
-    __setVSCodeConfig("privy.autocomplete", "model", "qwen2.5-coder:1.5b");
-    __setVSCodeConfig("privy", "model", "mistral:instruct");
+    __setVSCodeConfig("raceengineer", "provider", "Ollama");
+    __setVSCodeConfig("raceengineer", "providerBaseUrl", "http://localhost:11434");
+    __setVSCodeConfig("raceengineer.autocomplete", "model", "qwen2.5-coder:1.5b");
+    __setVSCodeConfig("raceengineer", "model", "mistral:instruct");
     vi.unstubAllGlobals();
   });
 
@@ -155,7 +155,7 @@ describe("AIClient.generateInfillText", () => {
   });
 
   it("rejects infill generation for non-Ollama provider", async () => {
-    __setVSCodeConfig("privy", "provider", "llama.cpp");
+    __setVSCodeConfig("raceengineer", "provider", "llama.cpp");
     const ai = createClient();
 
     await expect(
@@ -164,7 +164,7 @@ describe("AIClient.generateInfillText", () => {
         suffix: ";",
       })
     ).rejects.toThrow(
-      "Infill autocomplete is only supported when privy.provider is set to Ollama."
+      "Infill autocomplete is only supported when raceengineer.provider is set to Ollama."
     );
   });
 

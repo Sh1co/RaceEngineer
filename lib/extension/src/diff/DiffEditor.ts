@@ -19,13 +19,13 @@ export class DiffEditor {
     conversationId: string;
   }) {
     const panel = vscode.window.createWebviewPanel(
-      `privy.diff.${conversationId}`,
+      `raceengineer.diff.${conversationId}`,
       title,
       editorColumn
     );
 
     const useVisualStudioCodeColors: boolean = vscode.workspace
-      .getConfiguration("privy.syntaxHighlighting")
+      .getConfiguration("raceengineer.syntaxHighlighting")
       .get("useVisualStudioCodeColors", false);
 
     this.container = new WebviewContainer({

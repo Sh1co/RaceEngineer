@@ -1,4 +1,4 @@
-import { webviewApi } from "@privy/common";
+import { webviewApi } from "@raceengineer/common";
 import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { ChatPanelView } from "./panel/ChatPanelView";

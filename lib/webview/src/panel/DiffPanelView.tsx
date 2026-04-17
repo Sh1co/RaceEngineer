@@ -1,4 +1,4 @@
-import { webviewApi } from "@privy/common";
+import { webviewApi } from "@raceengineer/common";
 import React from "react";
 import { DiffView } from "../component/DiffView";
 import { SendMessage } from "../vscode/SendMessage";

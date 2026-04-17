@@ -16,7 +16,7 @@ export async function indexRepository({
   const repositoryPath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 
   if (repositoryPath == undefined) {
-    vscode.window.showErrorMessage("Privy: No workspace folder is open.");
+    vscode.window.showErrorMessage("RaceEngineer: No workspace folder is open.");
     return;
   }
 
@@ -111,8 +111,8 @@ export async function indexRepository({
   );
 
   if (!cancelled) {
-    const embeddingDir = path.join(repositoryPath, ".privy", "embedding");
-    const primaryFilename = path.join(embeddingDir, "privy-repository.json");
+    const embeddingDir = path.join(repositoryPath, ".raceengineer", "embedding");
+    const primaryFilename = path.join(embeddingDir, "raceengineer-repository.json");
     const legacyFilename = path.join(embeddingDir, "repository.json");
     const embeddingConfiguration = ai.getEmbeddingConfiguration();
 

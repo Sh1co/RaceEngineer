@@ -24,7 +24,7 @@ export class AutoCompleteProvider
     this.setConfiguration();
     vscode.workspace.onDidChangeConfiguration((event) => {
       if (
-        event.affectsConfiguration("privy") ||
+        event.affectsConfiguration("raceengineer") ||
         event.affectsConfiguration("editor.inlineSuggest")
       ) {
         this.setConfiguration();
@@ -44,10 +44,10 @@ export class AutoCompleteProvider
       this.mode = "disabled";
     } else {
       this.mode = vscode.workspace
-        .getConfiguration("privy")
+        .getConfiguration("raceengineer")
         .get("autocomplete.mode", "automatic");
       this.debounceWait = vscode.workspace
-        .getConfiguration("privy")
+        .getConfiguration("raceengineer")
         .get("autocomplete.debounceWait", 300);
       this.logger.debug([
         "Debounce wait time: ",

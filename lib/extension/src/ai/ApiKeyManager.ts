@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 
-const OPEN_AI_API_KEY_SECRET_KEY = "privy.openAI.apiKey";
+const OPEN_AI_API_KEY_SECRET_KEY = "raceengineer.openAI.apiKey";
 
 type UpdateEvent = "clear key" | "set key";
 

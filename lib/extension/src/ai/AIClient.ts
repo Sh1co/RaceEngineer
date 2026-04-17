@@ -112,7 +112,7 @@ function getProviderBaseUrl(): string {
   }
   return (
     vscode.workspace
-      .getConfiguration("privy")
+      .getConfiguration("raceengineer")
       .get("providerBaseUrl", defaultUrl)
       // Ensure that the base URL doesn't have a trailing slash:
       .replace(/\/$/, "")
@@ -122,33 +122,33 @@ function getProviderBaseUrl(): string {
 function getChatModel(): string {
   let model = z
     .enum(["mistral:instruct", "codellama:instruct", "custom"])
-    .parse(vscode.workspace.getConfiguration("privy").get("model"));
+    .parse(vscode.workspace.getConfiguration("raceengineer").get("model"));
   if (model === "custom") {
-    return vscode.workspace.getConfiguration("privy").get("customModel", "");
+    return vscode.workspace.getConfiguration("raceengineer").get("customModel", "");
   }
   return model;
 }
 function getAutoCompleteModel(): string {
   return vscode.workspace
-    .getConfiguration("privy.autocomplete")
+    .getConfiguration("raceengineer.autocomplete")
     .get("model", "");
 }
 
 function getEmbeddingModel(): string {
   return vscode.workspace
-    .getConfiguration("privy.embedding")
+    .getConfiguration("raceengineer.embedding")
     .get("model", "nomic-embed-text");
 }
 
 function getProvider() {
   return z
     .enum(["llamafile", "llama.cpp", "Ollama", "OpenAI"])
-    .parse(vscode.workspace.getConfiguration("privy").get("provider")) as ProviderName;
+    .parse(vscode.workspace.getConfiguration("raceengineer").get("provider")) as ProviderName;
 }
 
 function getChatEnableThinking(): boolean {
   return vscode.workspace
-    .getConfiguration("privy")
+    .getConfiguration("raceengineer")
     .get("chat.enableThinking", false);
 }
 
@@ -378,7 +378,7 @@ export class AIClient {
   }): Promise<string> {
     if (this.getProvider() !== "Ollama") {
       throw new Error(
-        "Infill autocomplete is only supported when privy.provider is set to Ollama."
+        "Infill autocomplete is only supported when raceengineer.provider is set to Ollama."
       );
     }
 
@@ -446,7 +446,7 @@ export class AIClient {
   async generateEmbedding({ input }: { input: string }) {
     if (this.getProvider() !== "Ollama") {
       throw new Error(
-        "Embedding generation requires privy.provider to be set to Ollama."
+        "Embedding generation requires raceengineer.provider to be set to Ollama."
       );
     }
 

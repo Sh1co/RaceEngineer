@@ -1,4 +1,4 @@
-import { util, webviewApi } from "@privy/common";
+import { util, webviewApi } from "@raceengineer/common";
 import * as vscode from "vscode";
 import { AIClient } from "../ai/AIClient";
 import { Conversation } from "../conversation/Conversation";
@@ -66,7 +66,7 @@ export class ChatController {
   }
 
   async showChatPanel() {
-    await vscode.commands.executeCommand("privy.chat.focus");
+    await vscode.commands.executeCommand("raceengineer.chat.focus");
   }
 
   async receivePanelMessage(rawMessage: unknown) {
@@ -75,7 +75,7 @@ export class ChatController {
 
     switch (type) {
       case "enterOpenAIApiKey": {
-        await vscode.commands.executeCommand("privy.enterOpenAIApiKey");
+        await vscode.commands.executeCommand("raceengineer.enterOpenAIApiKey");
         break;
       }
       case "clickCollapsedConversation": {

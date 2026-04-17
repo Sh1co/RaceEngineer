@@ -15,15 +15,15 @@ export const activate = async (context: vscode.ExtensionContext) => {
     secretStorage: context.secrets,
   });
 
-  const mainOutputChannel = vscode.window.createOutputChannel("Privy");
-  const indexOutputChannel = vscode.window.createOutputChannel("Privy Index");
+  const mainOutputChannel = vscode.window.createOutputChannel("RaceEngineer");
+  const indexOutputChannel = vscode.window.createOutputChannel("RaceEngineer Index");
 
   const vscodeLogger = new LoggerUsingVSCodeOutput({
     outputChannel: mainOutputChannel,
     level: getVSCodeLogLevel(),
   });
   vscode.workspace.onDidChangeConfiguration((event) => {
-    if (event.affectsConfiguration("privy.logger.level")) {
+    if (event.affectsConfiguration("raceengineer.logger.level")) {
       vscodeLogger.setLevel(getVSCodeLogLevel());
     }
   });
@@ -68,34 +68,34 @@ export const activate = async (context: vscode.ExtensionContext) => {
   );
 
   context.subscriptions.push(
-    vscode.window.registerWebviewViewProvider("privy.chat", chatPanel),
+    vscode.window.registerWebviewViewProvider("raceengineer.chat", chatPanel),
 
-    vscode.commands.registerCommand("privy.startConversation", (templateId) =>
+    vscode.commands.registerCommand("raceengineer.startConversation", (templateId) =>
       chatController.createConversation(templateId)
     ),
 
-    vscode.commands.registerCommand("privy.diagnoseErrors", () => {
+    vscode.commands.registerCommand("raceengineer.diagnoseErrors", () => {
       chatController.createConversation("diagnose-errors");
     }),
-    vscode.commands.registerCommand("privy.explainCode", () => {
+    vscode.commands.registerCommand("raceengineer.explainCode", () => {
       chatController.createConversation("explain-code");
     }),
-    vscode.commands.registerCommand("privy.findBugs", () => {
+    vscode.commands.registerCommand("raceengineer.findBugs", () => {
       chatController.createConversation("find-bugs");
     }),
-    vscode.commands.registerCommand("privy.generateCode", () => {
+    vscode.commands.registerCommand("raceengineer.generateCode", () => {
       chatController.createConversation("generate-code");
     }),
-    vscode.commands.registerCommand("privy.generateUnitTest", () => {
+    vscode.commands.registerCommand("raceengineer.generateUnitTest", () => {
       chatController.createConversation("generate-unit-test");
     }),
-    vscode.commands.registerCommand("privy.startChat", () => {
+    vscode.commands.registerCommand("raceengineer.startChat", () => {
       chatController.createConversation("chat-en");
     }),
-    vscode.commands.registerCommand("privy.editCode", () => {
+    vscode.commands.registerCommand("raceengineer.editCode", () => {
       chatController.createConversation("edit-code");
     }),
-    vscode.commands.registerCommand("privy.startCustomChat", async () => {
+    vscode.commands.registerCommand("raceengineer.startCustomChat", async () => {
       const items = conversationTypesProvider
         .getConversationTypes()
         .map((conversationType) => ({
@@ -123,33 +123,33 @@ export const activate = async (context: vscode.ExtensionContext) => {
 
       await chatController.createConversation(result.id);
     }),
-    vscode.commands.registerCommand("privy.touchBar.startChat", () => {
+    vscode.commands.registerCommand("raceengineer.touchBar.startChat", () => {
       chatController.createConversation("chat-en");
     }),
-    vscode.commands.registerCommand("privy.showChatPanel", async () => {
+    vscode.commands.registerCommand("raceengineer.showChatPanel", async () => {
       await chatController.showChatPanel();
     }),
-    vscode.commands.registerCommand("privy.getStarted", async () => {
+    vscode.commands.registerCommand("raceengineer.getStarted", async () => {
       await vscode.commands.executeCommand("workbench.action.openWalkthrough", {
-        category: `Privy.privy-vscode#privy`,
+        category: `RaceEngineer.raceengineer#raceengineer`,
       });
     }),
-    vscode.commands.registerCommand("privy.openSettings", async () => {
+    vscode.commands.registerCommand("raceengineer.openSettings", async () => {
       await vscode.commands.executeCommand(
         "workbench.action.openSettings",
-        `@ext:privy.privy-vscode`
+        `@ext:RaceEngineer.raceengineer`
       );
     }),
-    vscode.commands.registerCommand("privy.reloadTemplates", async () => {
+    vscode.commands.registerCommand("raceengineer.reloadTemplates", async () => {
       await conversationTypesProvider.loadConversationTypes();
-      vscode.window.showInformationMessage("Privy templates reloaded.");
+      vscode.window.showInformationMessage("RaceEngineer templates reloaded.");
     }),
 
-    vscode.commands.registerCommand("privy.showLogs", () => {
+    vscode.commands.registerCommand("raceengineer.showLogs", () => {
       mainOutputChannel.show(true);
     }),
 
-    vscode.commands.registerCommand("privy.indexRepository", async () => {
+    vscode.commands.registerCommand("raceengineer.indexRepository", async () => {
       return indexRepository({
         ai: ai,
         outputChannel: indexOutputChannel,

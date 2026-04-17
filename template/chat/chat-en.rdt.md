@@ -1,6 +1,6 @@
 # AI Chat in English
 
-This template lets you chat with Privy in English.
+This template lets you chat with RaceEngineer in English.
 
 ## Template
 
@@ -11,7 +11,7 @@ This template lets you chat with Privy in English.
   "id": "chat-en",
   "engineVersion": 0,
   "label": "Start chat",
-  "description": "Start a basic chat with Privy.",
+  "description": "Start a basic chat with RaceEngineer.",
   "header": {
     "title": "New chat",
     "useFirstMessageAsTitle": true,

@@ -1,6 +1,6 @@
 # AI Chat in German
 
-This template lets you chat with Privy in German.
+This template lets you chat with RaceEngineer in German.
 
 ## Template
 
@@ -11,7 +11,7 @@ This template lets you chat with Privy in German.
   "id": "chat-de",
   "engineVersion": 0,
   "label": "Starte eine Unterhaltung",
-  "description": "Starte eine Unterhaltung mit Privy.",
+  "description": "Starte eine Unterhaltung mit RaceEngineer.",
   "header": {
     "title": "Neue Unterhaltung",
     "useFirstMessageAsTitle": true,

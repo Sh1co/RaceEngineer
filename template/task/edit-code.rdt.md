@@ -12,7 +12,7 @@ Generate code using instructions.
   "engineVersion": 0,
   "label": "Edit Code",
   "tags": ["edit"],
-  "description": "Instruct Privy to edit the code. Creates a diff that you can review.",
+  "description": "Instruct RaceEngineer to edit the code. Creates a diff that you can review.",
   "header": {
     "title": "Edit Code {{location}}",
     "icon": {
