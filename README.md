@@ -1,8 +1,10 @@
 <div align="center">
   <h1><b>RaceEngineer</b></h1>
   <p>
-    <strong>Local-first VS Code copilot fork for modern models. No cloud pit wall.</strong>
+    <strong>A modern fork of Privy the open-source alternative to GitHub copilot that runs locally.</strong>
   </p>
+  <img src="./app/vscode/asset/media/extension-icon.png" width="128" alt="RaceEngineer icon"/>
+  <br/>
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"/>
   <img src="https://img.shields.io/github/v/release/Sh1co/RaceEngineer" alt="GitHub: Releases"/>
   <img src="https://img.shields.io/github/issues/Sh1co/RaceEngineer" alt="GitHub Issues"/>
@@ -11,7 +13,7 @@
 
 ## Why this fork exists
 
-Original project stopped updating long ago and drifted behind current local model behavior.
+Original project stopped updating long ago and drifted behind current local models.
 RaceEngineer keeps same spirit, but tuned for modern Ollama model workflows and better reliability.
 
 ## See it in action
@@ -23,12 +25,6 @@ RaceEngineer keeps same spirit, but tuned for modern Ollama model workflows and 
 ### Chat with your code
 
 <img src="./app/vscode/asset/media/chat.gif" width="760" alt="RaceEngineer chat demo"/>
-
-## Ferrari strategy mode (required team radio)
-
-- "We are checking."
-- Local model quality is as smart as the Ferrari strategy team.
-- Yes, this README is in full meme trim. Box box.
 
 ## Prerequisites
 
@@ -48,8 +44,8 @@ Use separate models for completion/chat/embedding:
 
 ## Install
 
-- Marketplace listing target ID: `RaceEngineer.raceengineer`
-- Local package path after build: `app/vscode/dist/raceengineer-0.2.8.vsix`
+- Not available on VS Code Marketplace yet.
+- Need to build and install locally
 
 ## Configuration
 
