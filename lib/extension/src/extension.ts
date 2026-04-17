@@ -10,6 +10,12 @@ import { indexRepository } from "./index/indexRepository";
 import { getVSCodeLogLevel, LoggerUsingVSCodeOutput } from "./logger";
 import { AutoCompleteProvider } from "./autocomplete/AutoCompleteProvider";
 
+function shouldAutoRebuildIndexOnStartup(): boolean {
+  return vscode.workspace
+    .getConfiguration("raceengineer")
+    .get<boolean>("indexRepository.autoRebuildOnStartup", false);
+}
+
 export const activate = async (context: vscode.ExtensionContext) => {
   const apiKeyManager = new ApiKeyManager({
     secretStorage: context.secrets,
@@ -161,6 +167,29 @@ export const activate = async (context: vscode.ExtensionContext) => {
       new AutoCompleteProvider({ ai: ai, logger: vscodeLogger })
     )
   );
+
+  if (shouldAutoRebuildIndexOnStartup()) {
+    setTimeout(() => {
+      vscode.commands
+        .executeCommand("raceengineer.indexRepository")
+        .then(() => {
+          indexOutputChannel.appendLine("Startup auto-rebuild completed.");
+        }, (error: unknown) => {
+          const errorMessage =
+            error != null &&
+            typeof error === "object" &&
+            "message" in error &&
+            typeof (error as { message: unknown }).message === "string"
+              ? (error as { message: string }).message
+              : String(error);
+
+          indexOutputChannel.appendLine(
+            `Startup auto-rebuild failed: ${errorMessage}`
+          );
+          console.error(error);
+        });
+    }, 0);
+  }
 
   return Object.freeze({
     async registerTemplate({ template }: { template: string }) {

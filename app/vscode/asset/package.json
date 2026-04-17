@@ -243,6 +243,13 @@
           "markdownDescription": "Enable the command to index your repository and give more context to the AI model. Experimental.",
           "scope": "application",
           "order": 12
+        },
+        "raceengineer.indexRepository.autoRebuildOnStartup": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Automatically rebuild repository embeddings once when VS Code starts and this extension activates.",
+          "scope": "application",
+          "order": 13
         }
       }
     },
