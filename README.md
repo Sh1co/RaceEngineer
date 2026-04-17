@@ -44,8 +44,20 @@ Use separate models for completion/chat/embedding:
 
 ## Install
 
+### VS Code extension
+
 - Not available on VS Code Marketplace yet.
-- Need to build and install locally
+- Need to build and install locally.
+
+### JetBrains plugin (Rider-first EAP)
+
+- New module: `app/jetbrains`
+- Build plugin zip with:
+  - `gradle -p app/jetbrains buildPlugin`
+- Output zip:
+  - `app/jetbrains/build/distributions/*.zip`
+- Install in Rider/IntelliJ:
+  - `Settings -> Plugins -> Install Plugin from Disk...`
 
 ## Configuration
 
@@ -68,6 +80,17 @@ Set these VS Code settings:
 - Explain code, find bugs, generate tests, diagnose errors
 - Retrieval augmentation with repository indexing
 - Modernized model support path for active local models
+
+## JetBrains status
+
+Current JetBrains v1 includes:
+- Chat tool window
+- Action parity (`Start Chat`, `Explain Code`, `Find Bugs`, `Generate Code`, `Generate Unit Test`, `Diagnose Errors`, `Reload Templates`, `Show Logs`)
+- Ollama chat + autocomplete strategy support (qwen infill + deepseek/stable/default prompt modes)
+- Regression tests for sanitize/normalize/strategy and infill payload fallback behavior
+
+Deferred parity items are tracked in:
+- [`doc/jetbrains-not-transferred-yet.md`](./doc/jetbrains-not-transferred-yet.md)
 
 ## Contributing
 

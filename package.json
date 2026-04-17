@@ -6,9 +6,12 @@
     "prepare": "husky install",
     "build-all": "pnpm nx run-many --target=build",
     "build-extension": "pnpm nx run vscode:build",
+    "build-jetbrains": "pnpm nx run jetbrains:build",
     "test": "pnpm nx run extension:test",
+    "test-jetbrains": "pnpm nx run jetbrains:test",
     "test-watch": "pnpm nx run extension:test-watch",
     "package": "pnpm nx run vscode:package",
+    "package-jetbrains": "pnpm nx run jetbrains:build",
     "deploy:vscode": "pnpm nx run vscode:publish-vscode",
     "deploy:ovsx": "pnpm nx run vscode:publish-ovsx"
   },

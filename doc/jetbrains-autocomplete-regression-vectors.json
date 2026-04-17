@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "placeholder-middle-code",
+      "raw": "obj['middle_code']",
+      "expectedSanitized": ""
+    },
+    {
+      "id": "placeholder-suf",
+      "raw": "obj['SUF']",
+      "expectedSanitized": ""
+    },
+    {
+      "id": "python-eof-empty-retry",
+      "prefix": "def calc_fib(n):\n    ",
+      "suffix": "",
+      "expectInfillRetrySuffixes": [
+        "\n",
+        "\nreturn"
+      ]
+    },
+    {
+      "id": "chat-spill",
+      "raw": "```python\nreturn 1\n```\n\nIn the provided code snippet...",
+      "expectedSanitized": "return 1"
+    },
+    {
+      "id": "cursor-marker-prefix",
+      "prefix": "def calc_fib(n):\n    # Cursor here",
+      "suffix": "\nprint(calc_fib(5))",
+      "expectedNormalizedPrefix": "def calc_fib(n):\n    "
+    },
+    {
+      "id": "cursor-marker-suffix",
+      "prefix": "def calc_fib(n):\n    ",
+      "suffix": "# Cursor here\nprint(calc_fib(5))\n",
+      "expectedNormalizedSuffix": "print(calc_fib(5))\n"
+    }
+  ]
+}
