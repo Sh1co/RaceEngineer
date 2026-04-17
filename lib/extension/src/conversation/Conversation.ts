@@ -93,14 +93,11 @@ export class Conversation {
     const header = this.template.header;
 
     try {
-      const firstMessageContent = this.messages[0]?.content;
-
-      if (
-        header.useFirstMessageAsTitle === true &&
-        this.titleSummary != null
-      ) {
+      if (this.titleSummary != null) {
         return this.titleSummary;
       }
+
+      const firstMessageContent = this.messages[0]?.content;
 
       if (
         header.useFirstMessageAsTitle === true &&
@@ -230,7 +227,7 @@ export class Conversation {
   }
 
   private async maybeGenerateTitleSummary() {
-    if (this.template.header.useFirstMessageAsTitle !== true) {
+    if (!this.shouldGenerateTitleSummary()) {
       return;
     }
 
@@ -280,6 +277,14 @@ export class Conversation {
     } finally {
       this.isGeneratingTitleSummary = false;
     }
+  }
+
+  private shouldGenerateTitleSummary() {
+    const header = this.template.header;
+    return (
+      header.useGeneratedSummaryAsTitle === true ||
+      header.useFirstMessageAsTitle === true
+    );
   }
 
   private createTitleSummaryPrompt({

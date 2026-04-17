@@ -110,6 +110,7 @@ export const rubberduckTemplateSchema = zod.object({
   header: zod.object({
     title: zod.string(),
     useFirstMessageAsTitle: zod.boolean().optional(), // default: false
+    useGeneratedSummaryAsTitle: zod.boolean().optional(), // default: false
     icon: zod.object({
       type: zod.literal("codicon"),
       value: zod.string(),

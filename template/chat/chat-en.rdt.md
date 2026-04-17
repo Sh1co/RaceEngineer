@@ -14,7 +14,8 @@ This template lets you chat with RaceEngineer in English.
   "description": "Start a basic chat with RaceEngineer.",
   "header": {
     "title": "New chat",
-    "useFirstMessageAsTitle": true,
+    "useFirstMessageAsTitle": false,
+    "useGeneratedSummaryAsTitle": true,
     "icon": {
       "type": "codicon",
       "value": "comment-discussion"
@@ -46,8 +47,8 @@ This template lets you chat with RaceEngineer in English.
       "query": "{{lastMessage}}",
       "source": "embedding-file",
       "file": "raceengineer-repository.json",
-      "threshold": 0.7,
-      "maxResults": 5
+      "threshold": 0.45,
+      "maxResults": 12
     },
     "maxTokens": 1024,
     "stop": ["Bot:", "Developer:"]
@@ -61,6 +62,7 @@ This template lets you chat with RaceEngineer in English.
 ## Instructions
 Continue the conversation below.
 Pay special attention to the current developer request.
+When Repository Search Results are present, treat them as repository access and answer directly from them. Do not claim missing repository context in that case.
 
 ## Current Request
 Developer: {{lastMessage}}

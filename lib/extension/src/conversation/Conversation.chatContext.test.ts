@@ -155,6 +155,14 @@ describe("chat-en template repo context integration", () => {
 
     const webviewConversation = await conversation.toWebviewConversation();
     expect(webviewConversation.header.title).toBe("Placeholder leak sanitizer");
+    expect(webviewConversation.header.isTitleMessage).toBe(false);
+    if (webviewConversation.content.type === "messageExchange") {
+      const firstMessage = webviewConversation.content.messages[0];
+      expect(firstMessage?.author).toBe("user");
+      expect(firstMessage?.content).toContain(
+        "Find where autocomplete sanitizes obj['SUF']"
+      );
+    }
   });
 
   it("answers repo question from mock repository context and avoids no-context fallback", async () => {
