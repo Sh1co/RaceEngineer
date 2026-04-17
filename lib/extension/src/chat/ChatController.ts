@@ -103,7 +103,9 @@ export class ChatController {
         const settingKey =
           key === "enableThinking"
             ? "chat.enableThinking"
-            : "chat.enableWebSearch";
+            : key === "enableWebSearch"
+            ? "chat.enableWebSearch"
+            : "chat.enableFileEditing";
 
         await configuration.update(
           settingKey,

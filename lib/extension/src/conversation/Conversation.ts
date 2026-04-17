@@ -1,5 +1,7 @@
 import { webviewApi } from "@raceengineer/common";
 import Handlebars from "handlebars";
+import fs from "node:fs/promises";
+import path from "node:path";
 import * as vscode from "vscode";
 import { AIClient } from "../ai/AIClient";
 import { DiffEditor } from "../diff/DiffEditor";
@@ -9,6 +11,11 @@ import { resolveVariables } from "./input/resolveVariables";
 import { executeRetrievalAugmentation } from "./retrieval-augmentation/executeRetrievalAugmentation";
 import { Prompt, RubberduckTemplate } from "./template/RubberduckTemplate";
 import { Logger } from "../logger";
+
+type FileRewriteInstruction = {
+  path: string;
+  content: string;
+};
 
 Handlebars.registerHelper({
   eq: (v1, v2) => v1 === v2,
@@ -210,9 +217,12 @@ export class Conversation {
       const promptWithWebSearch = await this.appendWebSearchContext(
         promptWithVariables
       );
+      const promptWithFileEditGuidance = this.appendFileEditInstructions(
+        promptWithWebSearch
+      );
 
       const stream = await this.ai.streamText({
-        prompt: promptWithWebSearch,
+        prompt: promptWithFileEditGuidance,
         maxTokens: prompt.maxTokens,
         stop: prompt.stop,
         temperature: prompt.temperature,
@@ -379,6 +389,158 @@ export class Conversation {
     }
   }
 
+  private appendFileEditInstructions(basePrompt: string): string {
+    if (!this.ai.isFileEditingEnabled()) {
+      return basePrompt;
+    }
+
+    return [
+      basePrompt,
+      "",
+      "## File Editing Mode (Enabled)",
+      "If user asks to create or modify files, emit one or more file rewrite blocks in this exact format:",
+      '<file_edit path="relative/path/from/workspace">',
+      "```",
+      "FULL FILE CONTENT",
+      "```",
+      "</file_edit>",
+      "Rules:",
+      "- Rewrite full file content for each edited file.",
+      "- Use workspace-relative paths only.",
+      "- After all edit blocks, include a short explanation.",
+      "- If no file edit is requested, answer normally with no file_edit block.",
+    ].join("\n");
+  }
+
+  private async applyFileEditsIfEnabled(response: string): Promise<string> {
+    if (!this.ai.isFileEditingEnabled()) {
+      return response;
+    }
+
+    const rewrites = this.parseFileRewriteInstructions(response);
+    if (rewrites.length === 0) {
+      return response;
+    }
+
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (workspaceRoot == null) {
+      return `${response}\n\nFile edits skipped: no workspace is open.`;
+    }
+
+    const applied: string[] = [];
+    const skipped: string[] = [];
+
+    for (const rewrite of rewrites) {
+      const resolvedPath = this.resolveWorkspacePath({
+        workspaceRoot,
+        requestedPath: rewrite.path,
+      });
+
+      if (resolvedPath == null) {
+        skipped.push(rewrite.path);
+        continue;
+      }
+
+      await fs.mkdir(path.dirname(resolvedPath), { recursive: true });
+      await fs.writeFile(resolvedPath, rewrite.content, "utf8");
+      applied.push(path.relative(workspaceRoot, resolvedPath).replace(/\\/g, "/"));
+    }
+
+    const cleanedResponse = this.stripFileRewriteBlocks(response).trim();
+    const parts: string[] = [];
+
+    if (cleanedResponse.length > 0) {
+      parts.push(cleanedResponse);
+    }
+
+    if (applied.length > 0) {
+      parts.push(
+        ["Applied file edits:", ...applied.map((filePath) => `- ${filePath}`)].join(
+          "\n"
+        )
+      );
+    }
+
+    if (skipped.length > 0) {
+      parts.push(
+        [
+          "Skipped file edits outside workspace:",
+          ...skipped.map((filePath) => `- ${filePath}`),
+        ].join("\n")
+      );
+    }
+
+    return parts.join("\n\n").trim();
+  }
+
+  private parseFileRewriteInstructions(response: string): FileRewriteInstruction[] {
+    const instructions: FileRewriteInstruction[] = [];
+    const regex =
+      /<file_edit\s+path="([^"]+)">\s*([\s\S]*?)<\/file_edit>/gim;
+
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(response)) != null) {
+      const requestedPath = match[1]?.trim();
+      const body = match[2] ?? "";
+      if (requestedPath == null || requestedPath.length === 0) {
+        continue;
+      }
+
+      const content = this.extractEditBodyContent(body);
+      instructions.push({
+        path: requestedPath,
+        content,
+      });
+    }
+
+    return instructions;
+  }
+
+  private extractEditBodyContent(body: string): string {
+    const fencedMatch = body.match(/```[^\n]*\n([\s\S]*?)```/);
+    if (fencedMatch?.[1] != null) {
+      return fencedMatch[1].replace(/\r\n/g, "\n").trimEnd();
+    }
+
+    return body.replace(/\r\n/g, "\n").trim();
+  }
+
+  private stripFileRewriteBlocks(response: string): string {
+    return response
+      .replace(/<file_edit\s+path="[^"]+">\s*[\s\S]*?<\/file_edit>/gim, "")
+      .trim();
+  }
+
+  private resolveWorkspacePath({
+    workspaceRoot,
+    requestedPath,
+  }: {
+    workspaceRoot: string;
+    requestedPath: string;
+  }): string | undefined {
+    const normalizedRequested = requestedPath.trim();
+    if (normalizedRequested.length === 0) {
+      return undefined;
+    }
+
+    const resolvedPath = path.isAbsolute(normalizedRequested)
+      ? path.resolve(normalizedRequested)
+      : path.resolve(workspaceRoot, normalizedRequested);
+
+    const workspaceRootResolved = path.resolve(workspaceRoot);
+    const normalizedRoot = workspaceRootResolved.toLowerCase();
+    const normalizedResolved = resolvedPath.toLowerCase();
+
+    if (
+      normalizedResolved !== normalizedRoot &&
+      !normalizedResolved.startsWith(`${normalizedRoot}${path.sep}`)
+    ) {
+      return undefined;
+    }
+
+    return resolvedPath;
+  }
+
   private getLatestUserMessage(): string | undefined {
     for (let i = this.messages.length - 1; i >= 0; i--) {
       const message = this.messages[i];
@@ -467,8 +629,12 @@ export class Conversation {
         break;
       }
       case "message": {
+        const completionWithOptionalEdits = await this.applyFileEditsIfEnabled(
+          trimmedCompletion
+        );
+
         await this.addBotMessage({
-          content: trimmedCompletion,
+          content: completionWithOptionalEdits,
         });
         break;
       }

@@ -104,6 +104,9 @@ describe("chat-en template repo context integration", () => {
       getEmbeddingConfiguration() {
         return { source: "ollama", model: "nomic-embed-text" };
       },
+      isFileEditingEnabled() {
+        return false;
+      },
       isWebSearchEnabled() {
         return false;
       },
@@ -230,6 +233,9 @@ describe("chat-en template repo context integration", () => {
       getEmbeddingConfiguration() {
         return { source: "ollama", model: "nomic-embed-text" };
       },
+      isFileEditingEnabled() {
+        return false;
+      },
       isWebSearchEnabled() {
         return false;
       },
@@ -338,6 +344,9 @@ describe("chat-en template repo context integration", () => {
       getEmbeddingConfiguration() {
         return { source: "ollama", model: "nomic-embed-text" };
       },
+      isFileEditingEnabled() {
+        return false;
+      },
       isWebSearchEnabled() {
         return true;
       },
@@ -376,5 +385,106 @@ describe("chat-en template repo context integration", () => {
     const prompt = streamText.mock.calls[0]?.[0]?.prompt as string;
     expect(prompt).toContain("## Web Search Results");
     expect(prompt).toContain("https://example.com/telemetry");
+  });
+
+  it("applies file rewrite blocks when file editing toggle is enabled", async () => {
+    __setWorkspaceFolder("C:\\mock-repo");
+
+    vi.spyOn(readFileContentModule, "readFileContent").mockResolvedValue(
+      JSON.stringify({
+        version: 0,
+        embedding: {
+          source: "ollama",
+          model: "nomic-embed-text",
+        },
+        chunks: [],
+      })
+    );
+
+    const writeFileMock = vi
+      .spyOn(fs, "writeFile")
+      .mockResolvedValue(undefined as never);
+    const mkdirMock = vi
+      .spyOn(fs, "mkdir")
+      .mockResolvedValue(undefined as never);
+
+    const generateEmbedding = vi.fn().mockResolvedValue({
+      type: "success" as const,
+      embedding: [1, 0, 0],
+      totalTokenCount: 3,
+    });
+
+    const streamText = vi.fn().mockImplementation(async ({ prompt }) => {
+      return (async function* () {
+        if (prompt.includes("Create a very short chat title")) {
+          yield "File edit test";
+          return;
+        }
+        yield [
+          '<file_edit path="lib/example.ts">',
+          "```ts",
+          "export const answer = 42;",
+          "```",
+          "</file_edit>",
+          "",
+          "Updated file.",
+        ].join("\n");
+      })();
+    });
+
+    const ai = {
+      getEmbeddingConfiguration() {
+        return { source: "ollama", model: "nomic-embed-text" };
+      },
+      isFileEditingEnabled() {
+        return true;
+      },
+      isWebSearchEnabled() {
+        return false;
+      },
+      async searchWeb() {
+        return [];
+      },
+      generateEmbedding,
+      streamText,
+    } as unknown as AIClient;
+
+    const templateMarkdown = await loadChatTemplateMarkdown();
+    const template = parseRubberduckTemplateOrThrow(templateMarkdown);
+
+    const conversation = new Conversation({
+      id: "conversation-4",
+      ai,
+      template,
+      initVariables: {
+        openFiles: [],
+        selectedText: "",
+      },
+      updateChatPanel: async () => {},
+      diffEditorManager: {
+        createDiffEditor: vi.fn(),
+      } as any,
+      diffData: undefined,
+      logger: loggerMock,
+    });
+
+    await conversation.answer("Please update lib/example.ts");
+
+    expect(mkdirMock).toHaveBeenCalled();
+    expect(writeFileMock).toHaveBeenCalledWith(
+      "C:\\mock-repo\\lib\\example.ts",
+      "export const answer = 42;",
+      "utf8"
+    );
+
+    const webviewConversation = await conversation.toWebviewConversation();
+    expect(webviewConversation.content.type).toBe("messageExchange");
+    if (webviewConversation.content.type === "messageExchange") {
+      const botMessages = webviewConversation.content.messages.filter(
+        (message) => message.author === "bot"
+      );
+      expect(botMessages.at(-1)?.content).toContain("Applied file edits:");
+      expect(botMessages.at(-1)?.content).toContain("lib/example.ts");
+    }
   });
 });

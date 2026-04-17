@@ -11,7 +11,11 @@ export const outgoingMessageSchema = zod.discriminatedUnion("type", [
   zod.object({
     type: zod.literal("setChatSetting"),
     data: zod.object({
-      key: zod.enum(["enableThinking", "enableWebSearch"]),
+      key: zod.enum([
+        "enableThinking",
+        "enableWebSearch",
+        "enableFileEditing",
+      ]),
       value: zod.boolean(),
     }),
   }),

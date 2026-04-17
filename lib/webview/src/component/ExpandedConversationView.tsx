@@ -15,9 +15,11 @@ export const ExpandedConversationView: React.FC<{
   chatSettings: {
     enableThinking: boolean;
     enableWebSearch: boolean;
+    enableFileEditing: boolean;
   };
   onToggleThinking: (value: boolean) => void;
   onToggleWebSearch: (value: boolean) => void;
+  onToggleFileEditing: (value: boolean) => void;
   onClickInsertPrompt?: () => void;
 }> = ({
   conversation,
@@ -30,6 +32,7 @@ export const ExpandedConversationView: React.FC<{
   chatSettings,
   onToggleThinking,
   onToggleWebSearch,
+  onToggleFileEditing,
   onClickInsertPrompt
 }) => {
   const content = conversation.content;
@@ -99,6 +102,15 @@ export const ExpandedConversationView: React.FC<{
               onChange={(event) => onToggleWebSearch(event.target.checked)}
             />
             <span>Web Search</span>
+          </label>
+
+          <label className="footer-toggle">
+            <input
+              type="checkbox"
+              checked={chatSettings.enableFileEditing}
+              onChange={(event) => onToggleFileEditing(event.target.checked)}
+            />
+            <span>File Edits</span>
           </label>
         </span>
 

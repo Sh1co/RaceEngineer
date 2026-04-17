@@ -168,6 +168,12 @@ export const ChatPanelView: React.FC<{
               data: { key: "enableWebSearch", value },
             })
           }
+          onToggleFileEditing={(value) =>
+            sendMessage({
+              type: "setChatSetting",
+              data: { key: "enableFileEditing", value },
+            })
+          }
           onClickExport={() => {
             sendMessage({
               type: "exportConversation",

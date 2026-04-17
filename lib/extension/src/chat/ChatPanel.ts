@@ -14,6 +14,7 @@ function getChatSettings() {
   return {
     enableThinking: configuration.get("chat.enableThinking", false),
     enableWebSearch: configuration.get("chat.enableWebSearch", false),
+    enableFileEditing: configuration.get("chat.enableFileEditing", false),
   };
 }
 

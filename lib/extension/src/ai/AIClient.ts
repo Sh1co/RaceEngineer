@@ -177,6 +177,12 @@ function getChatEnableWebSearch(): boolean {
     .get("chat.enableWebSearch", false);
 }
 
+function getChatEnableFileEditing(): boolean {
+  return vscode.workspace
+    .getConfiguration("raceengineer")
+    .get("chat.enableFileEditing", false);
+}
+
 function isQwenChatModel(model: string): boolean {
   const normalizedModel = model.trim().toLowerCase();
   return (
@@ -235,6 +241,10 @@ export class AIClient {
 
   public isWebSearchEnabled(): boolean {
     return getChatEnableWebSearch();
+  }
+
+  public isFileEditingEnabled(): boolean {
+    return getChatEnableFileEditing();
   }
 
   public async searchWeb({

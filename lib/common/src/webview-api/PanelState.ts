@@ -13,6 +13,7 @@ export const panelStateSchema = zod
       settings: zod.object({
         enableThinking: zod.boolean(),
         enableWebSearch: zod.boolean(),
+        enableFileEditing: zod.boolean(),
       }),
       error: errorSchema.optional(),
     }),

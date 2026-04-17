@@ -28,6 +28,9 @@ describe("Conversation edit flow", () => {
     );
 
     const ai = {
+      isFileEditingEnabled() {
+        return false;
+      },
       isWebSearchEnabled() {
         return false;
       },
