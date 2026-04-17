@@ -15,6 +15,7 @@ import { Logger } from "../logger";
 type FileRewriteInstruction = {
   path: string;
   content: string;
+  isClosed: boolean;
 };
 
 Handlebars.registerHelper({
@@ -460,18 +461,23 @@ export class Conversation {
       return response;
     }
 
-    const rewrites = this.parseFileRewriteInstructions(response);
+    const completedResponse = await this.completeTruncatedFileEditResponse(
+      response
+    );
+
+    const rewrites = this.parseFileRewriteInstructions(completedResponse);
     if (rewrites.length === 0) {
-      return response;
+      return completedResponse;
     }
 
     const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     if (workspaceRoot == null) {
-      return `${response}\n\nFile edits skipped: no workspace is open.`;
+      return `${completedResponse}\n\nFile edits skipped: no workspace is open.`;
     }
 
     const applied: string[] = [];
     const skipped: string[] = [];
+    let hasPartialRewrite = false;
 
     for (const rewrite of rewrites) {
       const resolvedPath = this.resolveWorkspacePath({
@@ -487,9 +493,12 @@ export class Conversation {
       await fs.mkdir(path.dirname(resolvedPath), { recursive: true });
       await fs.writeFile(resolvedPath, rewrite.content, "utf8");
       applied.push(path.relative(workspaceRoot, resolvedPath).replace(/\\/g, "/"));
+      if (!rewrite.isClosed) {
+        hasPartialRewrite = true;
+      }
     }
 
-    const cleanedResponse = this.stripFileRewriteBlocks(response).trim();
+    const cleanedResponse = this.stripFileRewriteBlocks(completedResponse).trim();
     const parts: string[] = [];
 
     if (cleanedResponse.length > 0) {
@@ -513,18 +522,149 @@ export class Conversation {
       );
     }
 
+    if (hasPartialRewrite) {
+      parts.push(
+        "Warning: at least one edit block was incomplete when output ended. Applied best-effort content."
+      );
+    }
+
     return parts.join("\n\n").trim();
+  }
+
+  private async completeTruncatedFileEditResponse(
+    response: string
+  ): Promise<string> {
+    if (!this.isLikelyTruncatedFileEditResponse(response)) {
+      return response;
+    }
+
+    try {
+      const stream = await this.ai.streamText({
+        prompt: this.createFileEditContinuationPrompt(response),
+        maxTokens: 2048,
+        temperature: 0,
+      });
+
+      let continuation = "";
+      for await (const chunk of stream) {
+        continuation += chunk;
+      }
+
+      if (continuation.trim().length === 0) {
+        return response;
+      }
+
+      const mergedContinuation = this.removeLeadingOverlap(
+        response,
+        continuation
+      );
+      if (mergedContinuation.length === 0) {
+        return response;
+      }
+
+      const joiner = this.shouldInsertContinuationNewline(
+        response,
+        mergedContinuation
+      )
+        ? "\n"
+        : "";
+
+      return response + joiner + mergedContinuation;
+    } catch (error) {
+      this.logger.debug(
+        `File-edit continuation failed: ${(error as Error)?.message ?? error}`
+      );
+      return response;
+    }
+  }
+
+  private isLikelyTruncatedFileEditResponse(response: string): boolean {
+    if (!/<file_edit\s+path="/i.test(response)) {
+      return false;
+    }
+
+    const openTagCount =
+      response.match(/<file_edit\s+path="[^"]+">/gim)?.length ?? 0;
+    const closeTagCount = response.match(/<\/file_edit>/gim)?.length ?? 0;
+    if (openTagCount > closeTagCount) {
+      return true;
+    }
+
+    const fenceCount = response.match(/```/g)?.length ?? 0;
+    return fenceCount % 2 === 1;
+  }
+
+  private createFileEditContinuationPrompt(previousResponse: string): string {
+    const tail = previousResponse.slice(-6000);
+    return [
+      "You were generating <file_edit> blocks and got cut off.",
+      "Continue exactly from where you stopped.",
+      "Do not repeat already generated text.",
+      "Close any open code fences and close each file block with </file_edit>.",
+      "",
+      "Previous output tail:",
+      "```text",
+      tail,
+      "```",
+      "",
+      "Continue:",
+    ].join("\n");
+  }
+
+  private removeLeadingOverlap(source: string, continuation: string): string {
+    const maxOverlap = Math.min(source.length, continuation.length);
+    for (let overlap = maxOverlap; overlap > 0; overlap -= 1) {
+      const tail = source.slice(-overlap);
+      if (continuation.startsWith(tail)) {
+        return continuation.slice(overlap);
+      }
+    }
+
+    return continuation;
+  }
+
+  private shouldInsertContinuationNewline(
+    source: string,
+    continuation: string
+  ): boolean {
+    if (source.endsWith("\n") || source.endsWith("\r")) {
+      return false;
+    }
+
+    if (!/^\s/.test(continuation)) {
+      return false;
+    }
+
+    const codeFenceCount = source.match(/```/g)?.length ?? 0;
+    return codeFenceCount % 2 === 1;
   }
 
   private parseFileRewriteInstructions(response: string): FileRewriteInstruction[] {
     const instructions: FileRewriteInstruction[] = [];
-    const regex =
-      /<file_edit\s+path="([^"]+)">\s*([\s\S]*?)<\/file_edit>/gim;
+    const openTagRegex = /<file_edit\s+path="([^"]+)">/gim;
+    const closeTag = "</file_edit>";
 
     let match: RegExpExecArray | null;
-    while ((match = regex.exec(response)) != null) {
+    while ((match = openTagRegex.exec(response)) != null) {
       const requestedPath = match[1]?.trim();
-      const body = match[2] ?? "";
+      const bodyStart = openTagRegex.lastIndex;
+      const closeTagIndex = response.indexOf(closeTag, bodyStart);
+      const nextOpenTagIndex = (() => {
+        const next = response.slice(bodyStart).search(/<file_edit\s+path="/i);
+        return next >= 0 ? bodyStart + next : -1;
+      })();
+
+      const hasValidCloseTag =
+        closeTagIndex >= 0 &&
+        (nextOpenTagIndex < 0 || closeTagIndex < nextOpenTagIndex);
+
+      const bodyEnd = hasValidCloseTag
+        ? closeTagIndex
+        : nextOpenTagIndex >= 0
+        ? nextOpenTagIndex
+        : response.length;
+      const body = response.slice(bodyStart, bodyEnd);
+
       if (requestedPath == null || requestedPath.length === 0) {
         continue;
       }
@@ -533,7 +673,12 @@ export class Conversation {
       instructions.push({
         path: requestedPath,
         content,
+        isClosed: hasValidCloseTag,
       });
+
+      openTagRegex.lastIndex = hasValidCloseTag
+        ? closeTagIndex + closeTag.length
+        : bodyEnd;
     }
 
     return instructions;
@@ -545,12 +690,17 @@ export class Conversation {
       return fencedMatch[1].replace(/\r\n/g, "\n").trimEnd();
     }
 
+    const singleFenceMatch = body.match(/```[^\n]*\n([\s\S]*)$/);
+    if (singleFenceMatch?.[1] != null) {
+      return singleFenceMatch[1].replace(/\r\n/g, "\n").trimEnd();
+    }
+
     return body.replace(/\r\n/g, "\n").trim();
   }
 
   private stripFileRewriteBlocks(response: string): string {
     return response
-      .replace(/<file_edit\s+path="[^"]+">\s*[\s\S]*?<\/file_edit>/gim, "")
+      .replace(/<file_edit\s+path="[^"]+">\s*[\s\S]*?(<\/file_edit>|$)/gim, "")
       .trim();
   }
 

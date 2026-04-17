@@ -37,6 +37,7 @@ describe("chat-en template repo context integration", () => {
     __resetVSCodeConfig();
     __setVSCodeConfig("raceengineer", "provider", "Ollama");
     __setWorkspaceFolder("C:\\repo");
+    vi.restoreAllMocks();
     vi.clearAllMocks();
   });
 
@@ -559,6 +560,119 @@ describe("chat-en template repo context integration", () => {
       );
       expect(botMessages.at(-1)?.content).toContain("Applied file edits:");
       expect(botMessages.at(-1)?.content).toContain("lib/example.ts");
+    }
+  });
+
+  it("continues truncated file rewrite output and still applies edits", async () => {
+    __setWorkspaceFolder("C:\\mock-repo");
+
+    vi.spyOn(readFileContentModule, "readFileContent").mockResolvedValue(
+      JSON.stringify({
+        version: 0,
+        embedding: {
+          source: "ollama",
+          model: "nomic-embed-text",
+        },
+        chunks: [],
+      })
+    );
+
+    const writeFileMock = vi
+      .spyOn(fs, "writeFile")
+      .mockResolvedValue(undefined as never);
+    const mkdirMock = vi
+      .spyOn(fs, "mkdir")
+      .mockResolvedValue(undefined as never);
+
+    const generateEmbedding = vi.fn().mockResolvedValue({
+      type: "success" as const,
+      embedding: [1, 0, 0],
+      totalTokenCount: 3,
+    });
+
+    const streamText = vi.fn().mockImplementation(async ({ prompt }) => {
+      return (async function* () {
+        if (prompt.includes("Create a very short chat title")) {
+          yield "Sort benchmark";
+          return;
+        }
+        if (prompt.includes("You were generating <file_edit> blocks")) {
+          yield "    return arr\n```\n</file_edit>\n\nImplemented benchmark.";
+          return;
+        }
+        yield [
+          '<file_edit path="test.py">',
+          "```python",
+          "def insertion_sort(arr):",
+          "    for i in range(1, len(arr)):",
+          "        key = arr[i]",
+        ].join("\n");
+      })();
+    });
+
+    const ai = {
+      getEmbeddingConfiguration() {
+        return { source: "ollama", model: "nomic-embed-text" };
+      },
+      isFileEditingEnabled() {
+        return true;
+      },
+      isWebSearchEnabled() {
+        return false;
+      },
+      async searchWeb() {
+        return [];
+      },
+      generateEmbedding,
+      streamText,
+    } as unknown as AIClient;
+
+    const templateMarkdown = await loadChatTemplateMarkdown();
+    const template = parseRubberduckTemplateOrThrow(templateMarkdown);
+
+    const conversation = new Conversation({
+      id: "conversation-6",
+      ai,
+      template,
+      initVariables: {
+        openFiles: [],
+        selectedText: "",
+      },
+      updateChatPanel: async () => {},
+      diffEditorManager: {
+        createDiffEditor: vi.fn(),
+      } as any,
+      diffData: undefined,
+      logger: loggerMock,
+    });
+
+    await conversation.answer("Patch test.py with insertion sort return");
+
+    expect(streamText).toHaveBeenCalledTimes(3);
+    expect(streamText.mock.calls[1]?.[0]?.prompt as string).toContain(
+      "Previous output tail"
+    );
+    expect(mkdirMock).toHaveBeenCalled();
+    expect(writeFileMock).toHaveBeenCalledWith(
+      "C:\\mock-repo\\test.py",
+      [
+        "def insertion_sort(arr):",
+        "    for i in range(1, len(arr)):",
+        "        key = arr[i]",
+        "    return arr",
+      ].join("\n"),
+      "utf8"
+    );
+
+    const webviewConversation = await conversation.toWebviewConversation();
+    expect(webviewConversation.content.type).toBe("messageExchange");
+    if (webviewConversation.content.type === "messageExchange") {
+      const botMessages = webviewConversation.content.messages.filter(
+        (message) => message.author === "bot"
+      );
+      expect(botMessages.at(-1)?.content).toContain("Applied file edits:");
+      expect(botMessages.at(-1)?.content).toContain("test.py");
+      expect(botMessages.at(-1)?.content).toContain("Implemented benchmark.");
     }
   });
 });
