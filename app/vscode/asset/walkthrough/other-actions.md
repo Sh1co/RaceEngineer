@@ -1,6 +1,6 @@
 # Other Actions
 
-Privy supports many commands that can be accessed from the command palette, the custom chat command, and from the editor context menu:
+RaceEngineer supports many commands that can be accessed from the command palette, the custom chat command, and from the editor context menu:
 
 - 🪄 **Generate Unit Tests** _(requires editor selection)_
 - 💬 **Explain Code** _(requires editor selection)_

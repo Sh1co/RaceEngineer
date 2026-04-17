@@ -1,12 +1,12 @@
-# Privy Inline Autocomplete Deep Dive (Internal)
+# RaceEngineer Inline Autocomplete Deep Dive (Internal)
 
 ## Goal
-Understand exactly how Privy produces inline suggestions in VS Code, and why behavior is model-dependent.
+Understand exactly how RaceEngineer produces inline suggestions in VS Code, and why behavior is model-dependent.
 
 ## End-to-end request flow
 
 1. VS Code trigger
-- Privy registers an inline completion provider in `activate()`:
+- RaceEngineer registers an inline completion provider in `activate()`:
 - File: `lib/extension/src/extension.ts`
 - API: `vscode.languages.registerInlineCompletionItemProvider({ pattern: "**" }, new AutoCompleteProvider(...))`
 - Result: provider can run for any text document.
@@ -17,7 +17,7 @@ Understand exactly how Privy produces inline suggestions in VS Code, and why beh
 - VS Code calls this on automatic triggers or manual trigger command.
 
 3. Debounce and skip checks
-- Debounce timer defaults to `300ms` (`privy.autocomplete.debounceWait`).
+- Debounce timer defaults to `300ms` (`raceengineer.autocomplete.debounceWait`).
 - Skip conditions:
 - Autocomplete mode is `disabled`.
 - Mode is `manual` but trigger is automatic.
@@ -48,9 +48,9 @@ Understand exactly how Privy produces inline suggestions in VS Code, and why beh
 6. Select model + provider backend
 - File: `lib/extension/src/ai/AIClient.ts`
 - Autocomplete model source:
-- `privy.autocomplete.model` (e.g. `deepseek-coder:1.3b-base`).
+- `raceengineer.autocomplete.model` (e.g. `deepseek-coder:1.3b-base`).
 - Provider source:
-- `privy.provider` (`Ollama`, `llamafile`, `llama.cpp`; code also supports `OpenAI` string path).
+- `raceengineer.provider` (`Ollama`, `llamafile`, `llama.cpp`; code also supports `OpenAI` string path).
 - Calls `generateText()` with text-prompt model path (`withTextPrompt()`), not chat-instruction path.
 
 7. Generate text and return suggestion
@@ -63,21 +63,21 @@ Understand exactly how Privy produces inline suggestions in VS Code, and why beh
 
 ## Config knobs that affect behavior
 
-- `privy.autocomplete.mode`
+- `raceengineer.autocomplete.mode`
 - `automatic`: fire as user types.
 - `manual`: user must trigger `editor.action.inlineSuggest.trigger` (keybinding configured in extension manifest).
 - `disabled`: never run provider.
 
-- `privy.autocomplete.model`
+- `raceengineer.autocomplete.model`
 - Determines prompt format branch and model used for generation.
 
-- `privy.autocomplete.debounceWait`
+- `raceengineer.autocomplete.debounceWait`
 - Controls latency/throughput tradeoff and frequency of calls.
 
 - `editor.inlineSuggest.enabled`
-- If false, Privy completion effectively disabled.
+- If false, RaceEngineer completion effectively disabled.
 
-- `privy.provider` + `privy.providerBaseUrl`
+- `raceengineer.provider` + `raceengineer.providerBaseUrl`
 - Control backend transport and model-serving runtime.
 
 ## Why autocomplete is model-dependent
@@ -87,7 +87,7 @@ Inline autocomplete here is model-dependent at multiple layers, not just quality
 1. Prompt token protocol dependency (hard dependency)
 - Different code models are trained to understand different FIM sentinel tokens.
 - If wrong sentinels used, model can ignore split point or generate garbage.
-- Privy explicitly branches prompt format by model prefix to match expected tokens.
+- RaceEngineer explicitly branches prompt format by model prefix to match expected tokens.
 
 2. Stop-token dependency (hard dependency)
 - Model outputs can include control markers or continue across boundaries unless stopped correctly.

@@ -1,7 +1,7 @@
-# Privy Project Summary (Detailed Internal Notes)
+# RaceEngineer Project Summary (Detailed Internal Notes)
 
 ## What this project is
-- Privy is a VS Code extension that provides:
+- RaceEngineer is a VS Code extension that provides:
 - Local-LLM chat workflows (template-driven task chats).
 - Inline code completion (Copilot-style suggestions).
 - Optional diff-apply editing flow from model output.
@@ -36,7 +36,7 @@
 - Loads conversation templates (built-in + extension + workspace).
 - Creates `AIClient`, `ChatModel`, `ChatPanel`, `ChatController`, `DiffEditorManager`.
 - Registers:
-- Webview view provider (`privy.chat`).
+- Webview view provider (`raceengineer.chat`).
 - Command palette/context commands (`startChat`, `explainCode`, `findBugs`, etc.).
 - Template reload command.
 - Repository indexing command.
@@ -89,7 +89,7 @@
 - Triggered by template completion handler `active-editor-diff`.
 - Conversation computes edited content by replacing selected range.
 - Attempts indentation normalization by relative indent between selection and model output.
-- Opens dedicated diff webview panel (`privy.diff.<conversationId>`).
+- Opens dedicated diff webview panel (`raceengineer.diff.<conversationId>`).
 - On apply:
 - Creates `WorkspaceEdit` replacing selected range in source doc.
 - Closes diff tab group tab if found.
@@ -123,10 +123,10 @@
 
 ## AI provider abstraction
 - `AIClient` uses `modelfusion`.
-- Provider chosen by `privy.provider` (`Ollama`, `llamafile`, `llama.cpp`, code includes `OpenAI` path though manifest enum omits it).
+- Provider chosen by `raceengineer.provider` (`Ollama`, `llamafile`, `llama.cpp`, code includes `OpenAI` path though manifest enum omits it).
 - Chat and autocomplete can use different models:
-- Chat model from `privy.model` (+ `privy.customModel`).
-- Completion model from `privy.autocomplete.model`.
+- Chat model from `raceengineer.model` (+ `raceengineer.customModel`).
+- Completion model from `raceengineer.autocomplete.model`.
 - Streaming chat uses instruction prompt style.
 - Autocomplete uses text generation model + fill-in-middle prompt templates.
 - Embedding generation currently uses `openai.TextEmbedder` API shape with model `text-embedding-ada-002`, but uses provider API config from current provider path.
@@ -142,11 +142,11 @@
 - Calls `ai.generateText()` and returns one inline completion item.
 
 ## Retrieval augmentation subsystem
-- Command `privy.indexRepository`:
+- Command `raceengineer.indexRepository`:
 - Gets tracked files via `git ls-files`.
 - Filters to supported extensions.
 - Reads files, chunks by line length budget, generates embedding per chunk.
-- Stores embedding corpus at `.privy/embedding/repository.json`.
+- Stores embedding corpus at `.raceengineer/embedding/repository.json`.
 - During conversation prompt build:
 - Template can define `retrievalAugmentation` source file/query/threshold/maxResults.
 - System embeds query, cosine-matches stored chunks, injects top matches into template variable.

@@ -1,6 +1,6 @@
 ---
 name: ✨ Feature request
-about: Suggest a new idea of what Privy could do
+about: Suggest a new idea of what RaceEngineer could do
 title: ""
 labels: "enhancement"
 assignees: ""
