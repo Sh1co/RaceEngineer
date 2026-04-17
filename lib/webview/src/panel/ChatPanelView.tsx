@@ -53,7 +53,7 @@ export const ChatPanelView: React.FC<{
         </div>
         <div className="chat-empty-state">
           <h3>RaceEngineer Chat</h3>
-          <p>Start first conversation. History panel collapsed by default.</p>
+          <p>Start a conversation with your race engineer</p>
           <StartChatButton onClick={() => sendMessage({ type: "startChat" })} />
         </div>
       </div>
