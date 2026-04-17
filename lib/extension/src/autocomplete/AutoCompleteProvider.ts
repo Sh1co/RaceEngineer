@@ -3,6 +3,8 @@ import { AIClient } from "../ai/AIClient";
 import { Logger } from "../logger";
 import { languages } from "./languages";
 import { AutoCompletePromptTemplateProvider } from "./AutoCompleteTemplateProvider";
+import { normalizeAutoCompleteContext } from "./normalizeAutoCompleteContext";
+import { sanitizeAutoCompleteResponse } from "./sanitizeAutoCompleteResponse";
 
 export class AutoCompleteProvider
   implements vscode.InlineCompletionItemProvider
@@ -130,31 +132,62 @@ export class AutoCompleteProvider
         clearTimeout(this.debouncer);
       }
       this.debouncer = setTimeout(async () => {
-        if (this.shouldSkipCompletion(context, token)) {
-          this.logger.debug("Skipping completion");
-          return null;
-        }
-        const { prefix, suffix } = this.getSurroundingCodeContext(
-          document,
-          position
-        );
-        const additionalContext = this.getAdditionalContext(document);
-        const { prompt, stop } =
-          this.autoCompleteTemplateProvider.getAutoCompletePrompt(
-            this.ai.getModel(),
-            { additionalContext, prefix, suffix }
+        try {
+          if (this.shouldSkipCompletion(context, token)) {
+            this.logger.debug("Skipping completion");
+            return resolve(null);
+          }
+
+          const rawContext = this.getSurroundingCodeContext(
+            document,
+            position
           );
-        const response = await this.ai.generateText({
-          prompt: prompt,
-          stop: stop,
-        });
-        this.logger.log(["Autocompletion response: ", response]);
-        return resolve([
-          {
-            insertText: response,
-            range: new vscode.Range(position, position),
-          },
-        ]);
+          const { prefix, suffix } = normalizeAutoCompleteContext(rawContext);
+          const additionalContext = this.getAdditionalContext(document);
+          const strategy =
+            this.autoCompleteTemplateProvider.getAutoCompleteStrategy(
+              this.ai.getModel(),
+              {
+                provider: this.ai.getProvider(),
+                additionalContext,
+                prefix,
+                suffix,
+              }
+            );
+
+          const response =
+            strategy.type === "infill"
+              ? await this.ai.generateInfillText({
+                  prefix: strategy.prefix,
+                  suffix: strategy.suffix,
+                  stop: strategy.stop,
+                  maxTokens: strategy.maxTokens,
+                })
+              : await this.ai.generateText({
+                  prompt: strategy.prompt,
+                  stop: strategy.stop,
+                  maxTokens: strategy.maxTokens,
+                });
+
+          const sanitizedResponse = sanitizeAutoCompleteResponse(response, {
+            prefix: strategy.type === "infill" ? strategy.prefix : prefix,
+            suffix: strategy.type === "infill" ? strategy.suffix : suffix,
+          });
+          if (sanitizedResponse.length === 0) {
+            return resolve(null);
+          }
+
+          this.logger.log(["Autocompletion response: ", sanitizedResponse]);
+          return resolve([
+            {
+              insertText: sanitizedResponse,
+              range: new vscode.Range(position, position),
+            },
+          ]);
+        } catch (error: any) {
+          this.logger.error(error?.message ?? "Autocomplete request failed.");
+          return resolve(null);
+        }
       }, this.debounceWait);
     });
   }
