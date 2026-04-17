@@ -1,0 +1,155 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { AIClient } from "../../ai/AIClient";
+import {
+  __resetVSCodeConfig,
+  __setCommandHandler,
+  __setVSCodeConfig,
+  __setWorkspaceFolder,
+} from "../../test/vscode.mock";
+import { executeRetrievalAugmentation } from "./executeRetrievalAugmentation";
+import * as readFileContentModule from "../../vscode/readFileContent";
+
+describe("executeRetrievalAugmentation", () => {
+  beforeEach(() => {
+    __resetVSCodeConfig();
+    __setVSCodeConfig("privy", "provider", "Ollama");
+    __setWorkspaceFolder("C:\\repo");
+    vi.clearAllMocks();
+  });
+
+  it("reindexes once on metadata mismatch, reloads index, then continues", async () => {
+    const readFileContentMock = vi
+      .spyOn(readFileContentModule, "readFileContent")
+      .mockImplementation(async () => "");
+    readFileContentMock
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          version: 0,
+          embedding: {
+            source: "openai",
+            model: "text-embedding-ada-002",
+          },
+          chunks: [
+            {
+              file: "a.ts",
+              start_position: 1,
+              end_position: 10,
+              content: "return alpha",
+              embedding: [1, 0, 0],
+            },
+          ],
+        })
+      )
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          version: 0,
+          embedding: {
+            source: "ollama",
+            model: "nomic-embed-text",
+          },
+          chunks: [
+            {
+              file: "a.ts",
+              start_position: 1,
+              end_position: 10,
+              content: "return alpha",
+              embedding: [1, 0, 0],
+            },
+          ],
+        })
+      );
+
+    const reindexHandler = vi.fn().mockResolvedValue(undefined);
+    __setCommandHandler("privy.indexRepository", reindexHandler);
+
+    const ai = {
+      getEmbeddingConfiguration() {
+        return { source: "ollama", model: "nomic-embed-text" };
+      },
+      async generateEmbedding() {
+        return {
+          type: "success" as const,
+          embedding: [1, 0, 0],
+          totalTokenCount: 1,
+        };
+      },
+    } as unknown as AIClient;
+
+    const chunks = await executeRetrievalAugmentation({
+      retrievalAugmentation: {
+        variableName: "context",
+        source: "embedding-file",
+        file: "privy-repository.json",
+        query: "alpha",
+        threshold: 0,
+        maxResults: 3,
+      },
+      initVariables: {},
+      variables: {},
+      ai,
+    });
+
+    expect(reindexHandler).toHaveBeenCalledTimes(1);
+    expect(readFileContentMock).toHaveBeenCalledTimes(2);
+    expect(chunks?.length).toBe(1);
+    expect(chunks?.[0]?.content).toBe("return alpha");
+  });
+
+  it("throws explicit error when index remains incompatible after reindex", async () => {
+    const readFileContentMock = vi
+      .spyOn(readFileContentModule, "readFileContent")
+      .mockImplementation(async () => "");
+    readFileContentMock
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          version: 0,
+          embedding: {
+            source: "openai",
+            model: "text-embedding-ada-002",
+          },
+          chunks: [],
+        })
+      )
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          version: 0,
+          embedding: {
+            source: "openai",
+            model: "text-embedding-ada-002",
+          },
+          chunks: [],
+        })
+      );
+
+    __setCommandHandler("privy.indexRepository", vi.fn().mockResolvedValue(undefined));
+
+    const ai = {
+      getEmbeddingConfiguration() {
+        return { source: "ollama", model: "nomic-embed-text" };
+      },
+      async generateEmbedding() {
+        return {
+          type: "success" as const,
+          embedding: [1, 0, 0],
+          totalTokenCount: 1,
+        };
+      },
+    } as unknown as AIClient;
+
+    await expect(
+      executeRetrievalAugmentation({
+        retrievalAugmentation: {
+          variableName: "context",
+          source: "embedding-file",
+          file: "repository.json",
+          query: "alpha",
+          threshold: 0,
+          maxResults: 3,
+        },
+        initVariables: {},
+        variables: {},
+        ai,
+      })
+    ).rejects.toThrow("Embedding index metadata mismatch after reindex");
+  });
+});
