@@ -84,7 +84,7 @@ export class WebviewContainer {
     <script nonce="${nonce}"
             src="${scriptUri}"
             data-panel-id="${this.panelId}"
-            data-state-reloading-enabled="${this.isStateReloadingEnabled}" />
+            data-state-reloading-enabled="${this.isStateReloadingEnabled}"></script>
   </body>
 </html>`;
   }
